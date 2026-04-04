@@ -38,15 +38,25 @@ function doPost(e) {
     // Create Drive folder structure: NPC Submissions / BrandName - CampaignTitle /
     var campaignFolder = getOrCreateFolder(data.brand, data.campaign);
 
-    // Save screenshots to Drive
+    // Save screenshots to Drive — organized into subfolders by task type
     var screenshotLinks = [];
     if (data.screenshots && data.screenshots.length > 0) {
+      var subFolderCache = {};
       for (var i = 0; i < data.screenshots.length; i++) {
         var s = data.screenshots[i];
         try {
+          // Get or create subfolder (e.g. "Instagram - Like", "Facebook - Comment", "Follow")
+          var subName = s.folder || 'General';
+          if (!subFolderCache[subName]) {
+            var subs = campaignFolder.getFoldersByName(subName);
+            subFolderCache[subName] = subs.hasNext() ? subs.next() : campaignFolder.createFolder(subName);
+          }
+          var targetFolder = subFolderCache[subName];
+
           var base64Data = s.data.split(',').length > 1 ? s.data.split(',')[1] : s.data;
-          var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), s.type || 'image/png', s.name || ('screenshot_' + (i+1) + '.png'));
-          var file = campaignFolder.createFile(blob);
+          var fileName = (data.name || 'npc') + '_' + subName.replace(/\s/g,'_') + '_' + (i+1) + '.jpg';
+          var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), s.type || 'image/jpeg', fileName);
+          var file = targetFolder.createFile(blob);
           file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
           screenshotLinks.push(file.getUrl());
         } catch (imgErr) {

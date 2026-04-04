@@ -100,6 +100,19 @@ textarea.npc-input:focus{border:2px solid #1B2654}
 .btn-submit:disabled{opacity:.5;cursor:not-allowed}
 .btn-clear{background:transparent;color:#1B2654;border:none;font-size:14px;cursor:pointer;font-family:inherit;text-decoration:underline;padding:8px}
 .err-wrap{max-width:640px;margin:60px auto;background:#fff;border-radius:12px;padding:40px;text-align:center;border:1px solid #e0e0e0}
+/* LINK PREVIEW */
+.link-preview-wrap{position:relative;display:inline}
+.link-preview{display:none;position:absolute;z-index:100;bottom:calc(100% + 8px);left:0;width:320px;background:#fff;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.18);border:1px solid #e0e0e0;overflow:hidden}
+.link-preview.show{display:block;animation:lpIn .2s ease}
+@keyframes lpIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.link-preview iframe{width:100%;height:200px;border:none;pointer-events:none}
+.link-preview-fallback{padding:14px;display:flex;align-items:center;gap:10px}
+.link-preview-favicon{width:28px;height:28px;border-radius:6px;background:#f0f4f9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.link-preview-favicon img{width:20px;height:20px}
+.link-preview-info{flex:1;min-width:0}
+.link-preview-domain{font-size:12px;font-weight:600;color:#1B2654}
+.link-preview-url{font-size:10px;color:#9aa0a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.link-preview-open{font-size:10px;color:#F5812A;font-weight:600;margin-top:2px}
 .submit-status{max-width:640px;margin:10px auto 0;padding:12px 16px;border-radius:8px;font-size:13px;text-align:center;display:none}
 .submit-status.ok{display:block;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
 .submit-status.err{display:block;background:#fce8e6;color:#c62828;border:1px solid #f5c6cb}
@@ -340,7 +353,20 @@ function processFile(file,uid,type){
       prev.style.display='flex';
       prev.innerHTML='<img src="'+e.target.result+'"/><div class="upload-preview-info"><div class="upload-preview-name">'+esc(file.name)+'</div><div class="upload-preview-status">&#9989; Screenshot uploaded</div></div><button class="upload-remove" onclick="removeUpload(\''+uid+'\',\''+type+'\')">&#215;</button>';
     }
-    uploadFiles[uid]={name:file.name,type:file.type,data:e.target.result};
+    // Tag with task type and platform for Drive folder categorization
+    var taskLabel=uid.replace(/^u_/,'');// e.g. "0_like", "0_share", "follow_0"
+    var platName='';var taskName='';
+    if(taskLabel.indexOf('follow')===0){
+      taskName='Follow';
+      var fi=parseInt(taskLabel.split('_')[1])||0;
+      platName=C&&C.followUrls&&C.followUrls[fi]?dom(C.followUrls[fi]):'page';
+    } else {
+      var parts=taskLabel.split('_');
+      var pi=parseInt(parts[0])||0;
+      taskName=(parts[1]||'').charAt(0).toUpperCase()+(parts[1]||'').slice(1);// Like, Share, Comment
+      platName=C&&C.urls&&C.urls[pi]?C.urls[pi].label:'platform';
+    }
+    uploadFiles[uid]={name:file.name,type:file.type,data:e.target.result,folder:platName+' - '+taskName};
     if(!uploadsDone[uid]){uploadsDone[uid]=true;doneTasks++;updateProgress();}
   };reader.readAsDataURL(file);
 }
@@ -439,7 +465,7 @@ function doSubmit(){
   var screenshots=[];
   Object.keys(uploadFiles).forEach(function(uid){
     var f=uploadFiles[uid];
-    screenshots.push({name:f.name,type:f.type,data:f.data});
+    screenshots.push({name:f.name,type:f.type,data:f.data,folder:f.folder||''});
   });
 
   var payload={
@@ -493,11 +519,58 @@ function doSubmit(){
   });
 }
 
+/* ── Link Preview on Hover ── */
+var _previewEl=null;
+var _previewTimer=null;
+function initLinkPreviews(){
+  document.addEventListener('mouseover',function(e){
+    var link=e.target.closest('a.plat-link, a.follow-url-link, a[href]');
+    if(!link||!link.href||link.href.indexOf('http')!==0)return;
+    clearTimeout(_previewTimer);
+    _previewTimer=setTimeout(function(){showLinkPreview(link);},400);
+  });
+  document.addEventListener('mouseout',function(e){
+    var link=e.target.closest('a.plat-link, a.follow-url-link, a[href]');
+    if(link||e.target===_previewEl){
+      clearTimeout(_previewTimer);
+      _previewTimer=setTimeout(hideLinkPreview,300);
+    }
+  });
+}
+function showLinkPreview(link){
+  hideLinkPreview();
+  var url=link.href;
+  var hostname=dom(url);
+  var favicon='https://www.google.com/s2/favicons?domain='+hostname+'&sz=32';
+  var el=document.createElement('div');
+  el.className='link-preview show';
+  el.innerHTML='<iframe src="'+esc(url)+'" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>'
+    +'<div class="link-preview-fallback">'
+    +'<div class="link-preview-favicon"><img src="'+favicon+'" onerror="this.style.display=\'none\'"/></div>'
+    +'<div class="link-preview-info"><div class="link-preview-domain">'+esc(hostname)+'</div>'
+    +'<div class="link-preview-url">'+esc(url)+'</div>'
+    +'<div class="link-preview-open">Click to open \u2192</div></div></div>';
+  el.addEventListener('mouseover',function(){clearTimeout(_previewTimer);});
+  el.addEventListener('mouseout',function(){_previewTimer=setTimeout(hideLinkPreview,300);});
+  link.style.position='relative';
+  link.appendChild(el);
+  _previewEl=el;
+  // Reposition if offscreen
+  var rect=el.getBoundingClientRect();
+  if(rect.left<0)el.style.left='0';
+  if(rect.right>window.innerWidth)el.style.left=(window.innerWidth-rect.right-10)+'px';
+  if(rect.top<0){el.style.bottom='auto';el.style.top='calc(100% + 8px)';}
+}
+function hideLinkPreview(){
+  if(_previewEl){_previewEl.remove();_previewEl=null;}
+}
+
 /* ── Init ── */
 (function(){
   var d=decode();
   if(d&&d.brand&&(d.why||(d.urls&&d.urls.length>0))){
     build(d);
+    initLinkPreviews();
   } else {
     document.getElementById('app').innerHTML='<div class="err-wrap"><div style="font-size:40px;margin-bottom:16px">&#128279;</div><h2 style="font-size:20px;font-weight:600;color:#1B2654;margin-bottom:10px">No campaign found</h2><p style="font-size:14px;color:#5f6368;line-height:1.6">This link does not have a valid campaign attached.<br>Ask your campaign manager for the correct NPC link.</p></div>';
   }

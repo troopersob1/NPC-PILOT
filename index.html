@@ -100,7 +100,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 @keyframes up{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .slbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--t2);text-transform:uppercase;margin:16px 0 8px;display:flex;align-items:center;gap:8px;}
 .slbl::after{content:'';flex:1;height:1px;background:var(--b1);}
-.pr{background:var(--card);border:1px solid var(--b2);border-radius:9px;padding:10px 13px;display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:7px;}
+.pr{background:var(--card);border:1px solid var(--b2);border-radius:9px;padding:10px 13px;display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:7px;position:relative;}
+/* LINK PREVIEW */
+.link-preview{display:none;position:absolute;z-index:100;bottom:calc(100% + 8px);left:0;width:320px;background:#1a1a1a;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.4);border:1px solid var(--b2);overflow:hidden}
+.link-preview.show{display:block;animation:lpIn .2s ease}
+@keyframes lpIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.link-preview iframe{width:100%;height:200px;border:none;pointer-events:none;background:#111}
+.link-preview-fallback{padding:12px;display:flex;align-items:center;gap:10px}
+.link-preview-favicon{width:28px;height:28px;border-radius:6px;background:var(--card);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.link-preview-favicon img{width:20px;height:20px}
+.link-preview-info{flex:1;min-width:0}
+.link-preview-domain{font-size:12px;font-weight:600;color:var(--tx)}
+.link-preview-url{font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.link-preview-open{font-size:10px;color:var(--acc);font-weight:600;margin-top:2px}
 .pr-icon{font-size:18px;flex-shrink:0;}.pr-name{font-size:12px;font-weight:600;color:var(--tx);margin-bottom:2px;}.pr-url{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);word-break:break-all;}
 .cost-box{background:var(--sur);border:1px solid var(--b2);border-radius:10px;overflow:hidden;margin-bottom:16px;}
 .cb-hdr{padding:9px 15px;border-bottom:1px solid var(--b1);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--t2);text-transform:uppercase;}
@@ -364,6 +376,30 @@ function loadDashboard(){
   });
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Link preview on hover
+var _previewEl=null,_previewTimer=null;
+document.addEventListener('mouseover',function(e){
+  var link=e.target.closest('a.pr,a[href]');
+  if(!link||!link.href||link.href.indexOf('http')!==0||link.closest('.link-preview'))return;
+  clearTimeout(_previewTimer);
+  _previewTimer=setTimeout(function(){
+    if(_previewEl)_previewEl.remove();
+    var url=link.href,hostname=dom(url);
+    var favicon='https://www.google.com/s2/favicons?domain='+hostname+'&sz=32';
+    var el=document.createElement('div');
+    el.className='link-preview show';
+    el.innerHTML='<iframe src="'+esc(url)+'" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe><div class="link-preview-fallback"><div class="link-preview-favicon"><img src="'+favicon+'" onerror="this.style.display=\'none\'"/></div><div class="link-preview-info"><div class="link-preview-domain">'+esc(hostname)+'</div><div class="link-preview-url">'+esc(url)+'</div><div class="link-preview-open">Click to open \u2192</div></div></div>';
+    el.addEventListener('mouseover',function(){clearTimeout(_previewTimer);});
+    el.addEventListener('mouseout',function(){_previewTimer=setTimeout(function(){if(_previewEl){_previewEl.remove();_previewEl=null;}},300);});
+    link.appendChild(el);_previewEl=el;
+    var rect=el.getBoundingClientRect();
+    if(rect.top<0){el.style.bottom='auto';el.style.top='calc(100% + 8px)';}
+  },400);
+});
+document.addEventListener('mouseout',function(e){
+  var link=e.target.closest('a.pr,a[href]');
+  if(link){clearTimeout(_previewTimer);_previewTimer=setTimeout(function(){if(_previewEl){_previewEl.remove();_previewEl=null;}},300);}
+});
 recalc();
 </script>
 </body>
