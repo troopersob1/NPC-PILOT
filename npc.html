@@ -292,7 +292,7 @@ function genBox(idx,type,langs,platLabel){
 
 function taskUpload(label,reward,type,platIdx){
   var uid='u_'+platIdx+'_'+type;
-  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><div class="upload-area" id="'+uid+'_area"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div><input type="file" accept="image/*" capture="environment" onchange="handleUpload(this,\''+uid+'\',\''+type+'\')"/></div><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
+  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><div class="upload-area" id="'+uid+'_area"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div><input type="file" accept="image/*"  onchange="handleUpload(this,\''+uid+'\',\''+type+'\')"/></div><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
 }
 
 function handleUpload(input,uid,type){if(input.files&&input.files[0])processFile(input.files[0],uid,type);}
