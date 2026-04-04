@@ -17,8 +17,8 @@ var FOLDER_NAME = 'NPC Submissions';
 
 function doPost(e) {
   try {
-    // Handle both application/json and text/plain content types
-    var raw = e.postData.contents;
+    // Handle form POST (e.parameter.data) or raw body (e.postData.contents)
+    var raw = (e.parameter && e.parameter.data) ? e.parameter.data : e.postData.contents;
     var data = JSON.parse(raw);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
