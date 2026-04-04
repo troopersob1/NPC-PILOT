@@ -143,36 +143,52 @@ function buildPrompt(type, lang, platLabel){
   var langLabel=LANG_LABELS[lang]||'English';
 
   var toneLines=[];
-  if(tone.advocacy)toneLines.push('- '+tone.advocacy+'% Advocacy (fully supportive, strong endorsement)');
-  if(tone.neutral)toneLines.push('- '+tone.neutral+'% Neutral (sharing facts, informational)');
-  if(tone.short)toneLines.push('- '+tone.short+'% Short (under 8 words, quick reaction)');
-  if(tone.discussion)toneLines.push('- '+tone.discussion+'% Discussion (ends with a question)');
+  if(tone.advocacy)toneLines.push('- '+tone.advocacy+'% chance: ADVOCACY \u2014 You fully support this and want to say why. Strong, positive endorsement. Show genuine pride or excitement.');
+  if(tone.neutral)toneLines.push('- '+tone.neutral+'% chance: NEUTRAL \u2014 You are sharing factual context. Informational, credible, no hard sell. Let the facts speak.');
+  if(tone.short)toneLines.push('- '+tone.short+'% chance: SHORT \u2014 A quick, punchy reaction in under 8 words. Think "Finally!" or "This is huge" or "About time la".');
+  if(tone.discussion)toneLines.push('- '+tone.discussion+'% chance: DISCUSSION \u2014 You want to spark conversation. End with a genuine question that invites others to share their view.');
 
-  var p='';
+  var p='=== YOUR ROLE ===\n';
+  p+='You are an NPC (Network Promoter Contributor) \u2014 a real person who genuinely supports '+brand+' and wants to spread the word on social media. You are NOT a bot, NOT a brand manager, NOT a copywriter. You are a real supporter writing in your own voice.\n\n';
+
+  p+='=== CAMPAIGN CONTEXT ===\n';
+  p+='Brand: '+brand+'\n';
+  p+='Platform: '+platLabel+'\n';
+  p+='What '+brand+' wants people to know:\n'+why+'\n\n';
+
+  if(samples){
+    p+='=== CAMPAIGN BRIEF & TALKING POINTS ===\n';
+    p+='The brand has provided these angles and talking points. Use them as inspiration for your positive feedback:\n\n';
+    p+=samples+'\n\n';
+  }
+
+  p+='=== TONE STYLE ===\n';
+  p+='Pick ONE of the following tone styles randomly (weighted by the percentages):\n';
+  p+=toneLines.join('\n')+'\n\n';
+
   if(type==='cap'){
-    p='I need you to write ONE unique social media caption for me to use when sharing a post on '+platLabel+'.\n\n';
-    p+='Brand: '+brand+'\n';
-    p+='What this is about: '+why+'\n\n';
-    p+='TONE GUIDELINES (pick ONE style randomly):\n'+toneLines.join('\n')+'\n\n';
-    if(samples)p+='SAMPLE STYLE REFERENCE:\n'+samples+'\n\n';
+    p+='=== YOUR TASK ===\n';
+    p+='Write ONE unique caption to post when sharing '+brand+'\'s '+platLabel+' post on your own feed.\n\n';
     p+='RULES:\n';
     p+='- Write in '+langLabel+'\n';
-    p+='- Sound like a real person sharing genuinely, NOT a brand or bot\n';
-    p+='- Include 1-3 relevant hashtags\n';
-    p+='- Keep it authentic and natural\n';
-    p+='- Return ONLY the caption, nothing else\n';
+    p+='- This is YOUR voice \u2014 write like you personally believe in and support this\n';
+    p+='- Draw from the talking points above to craft positive, authentic feedback\n';
+    p+='- Include 1\u20133 relevant hashtags at the end\n';
+    p+='- Do NOT sound corporate, scripted, or like an ad\n';
+    p+='- Do NOT start with "I" every time \u2014 vary your opening\n';
+    p+='- Return ONLY the caption text, nothing else (no labels, no quotes, no explanation)\n';
   } else {
-    p='I need you to write ONE unique social media comment for me to post on a '+platLabel+' post.\n\n';
-    p+='Brand: '+brand+'\n';
-    p+='What this is about: '+why+'\n\n';
-    p+='TONE GUIDELINES (pick ONE style randomly):\n'+toneLines.join('\n')+'\n\n';
-    if(samples)p+='SAMPLE STYLE REFERENCE:\n'+samples+'\n\n';
+    p+='=== YOUR TASK ===\n';
+    p+='Write ONE unique comment to post directly on '+brand+'\'s '+platLabel+' post.\n\n';
     p+='RULES:\n';
     p+='- Write in '+langLabel+'\n';
-    p+='- Sound like a genuine reaction from a real person\n';
-    p+='- Vary the length based on tone style picked\n';
+    p+='- This is YOUR voice \u2014 react like a real person who genuinely supports this\n';
+    p+='- Draw from the talking points above to craft positive, authentic feedback\n';
+    p+='- Match the length to the tone style you picked (SHORT = under 8 words, others = 1\u20134 sentences)\n';
     p+='- Do NOT use hashtags in comments\n';
-    p+='- Return ONLY the comment, nothing else\n';
+    p+='- Do NOT start with "I" every time \u2014 vary your opening\n';
+    p+='- Do NOT sound corporate, scripted, or like an ad\n';
+    p+='- Return ONLY the comment text, nothing else (no labels, no quotes, no explanation)\n';
   }
   return p;
 }
@@ -353,6 +369,30 @@ function bankSel(){var b=['08 - AmBank','12 - Alliance Bank','32 - Affin Bank','
 
 function doClear(){if(!confirm('Clear all answers?'))return;document.querySelectorAll('input[type=text],input[type=email],textarea').forEach(function(el){el.value='';el.className=el.className.replace('has-text','');});document.querySelectorAll('select').forEach(function(el){el.selectedIndex=0;});document.querySelectorAll('.upload-area').forEach(function(el){el.classList.remove('done');});document.querySelectorAll('.upload-preview').forEach(function(el){el.style.display='none';el.innerHTML='';});uploadsDone={};uploadFiles={};doneTasks=0;updateProgress();var b=document.getElementById('completionBanner');if(b)b.remove();var st=document.getElementById('submitStatus');if(st){st.className='submit-status';st.textContent='';}}
 
+/* ── Resize screenshots to keep payload manageable ── */
+function resizeScreenshots(screenshots, cb){
+  if(!screenshots||screenshots.length===0){cb([]);return;}
+  var results=[];var pending=screenshots.length;
+  screenshots.forEach(function(s,idx){
+    var img=new Image();
+    img.onload=function(){
+      var maxW=800,maxH=800;
+      var w=img.width,h=img.height;
+      if(w>maxW||h>maxH){var ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}
+      var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      var dataUrl=canvas.toDataURL('image/jpeg',0.7);
+      results[idx]={name:s.name||('screenshot_'+(idx+1)+'.jpg'),type:'image/jpeg',data:dataUrl};
+      pending--;if(pending<=0)cb(results);
+    };
+    img.onerror=function(){
+      results[idx]=s;
+      pending--;if(pending<=0)cb(results);
+    };
+    img.src=s.data;
+  });
+}
+
 /* ── Submit to Google Apps Script ── */
 function doSubmit(){
   var name=document.getElementById('claimName');
@@ -398,19 +438,26 @@ function doSubmit(){
     screenshots:screenshots
   };
 
-  fetch(scriptUrl,{
-    method:'POST',
-    mode:'no-cors',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  }).then(function(){
-    status.className='submit-status ok';
-    status.textContent='Submission received! Your reward will be processed within 3 to 5 business days.';
-    btn.textContent='Submitted';
-  }).catch(function(err){
-    status.className='submit-status ok';
-    status.textContent='Submission received! Your reward will be processed within 3 to 5 business days.';
-    btn.textContent='Submitted';
+  // Resize screenshots before sending to avoid payload too large
+  resizeScreenshots(screenshots, function(resized){
+    var finalPayload=JSON.parse(JSON.stringify(payload));
+    finalPayload.screenshots=resized;
+    // Use text/plain for no-cors compatibility with Google Apps Script
+    fetch(scriptUrl,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(finalPayload)
+    }).then(function(){
+      status.className='submit-status ok';
+      status.textContent='Submission received! Your reward will be processed within 3 to 5 business days.';
+      btn.textContent='Submitted';
+    }).catch(function(err){
+      status.className='submit-status err';
+      status.textContent='Submission failed: '+err.message+'. Please try again.';
+      btn.disabled=false;
+      btn.textContent='Submit & Claim Reward';
+    });
   });
 }
 
