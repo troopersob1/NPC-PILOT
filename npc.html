@@ -55,10 +55,14 @@ textarea.npc-input:focus{border:2px solid #1B2654}
 .task-rw{background:#fff3e8;border:1px solid #F5812A;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;color:#F5812A;white-space:nowrap}
 .upload-area{display:block;border:2px dashed #c5cae9;border-radius:10px;padding:16px 14px;background:#fafafa;text-align:center;cursor:pointer;margin-top:6px;transition:all .2s}
 .upload-area.done{border-color:#34A853;background:#f0fff4;border-style:solid}
+.upload-area.dragover{border-color:#1B2654;background:#e8eaf6;border-style:solid}
 .upload-area-icon{font-size:28px;margin-bottom:4px}
 .upload-area-text{font-size:13px;color:#5f6368;font-weight:500}
 .upload-area-sub{font-size:11px;color:#9aa0a6;margin-top:2px}
 .upload-area input[type=file]{display:none}
+.upload-methods{display:flex;gap:6px;justify-content:center;margin-top:8px}
+.upload-btn{padding:6px 14px;font-size:12px;font-weight:600;border-radius:20px;border:1px solid #c5cae9;background:#fff;color:#1B2654;cursor:pointer;font-family:inherit;transition:all .15s}
+.upload-btn:hover{background:#1B2654;color:#fff;border-color:#1B2654}
 .upload-preview{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7}
 .upload-preview img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #ccc;flex-shrink:0}
 .upload-preview-info{flex:1;min-width:0}
@@ -321,10 +325,77 @@ function genBox(idx,type,langs,platLabel){
 
 function taskUpload(label,reward,type,platIdx){
   var uid='u_'+platIdx+'_'+type;
-  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><label class="upload-area" id="'+uid+'_area" for="file_'+uid+'"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div><input type="file" id="file_'+uid+'" onchange="handleFile(this,\''+uid+'\',\''+type+'\')"/></label><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
+  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div>'
+    +'<div class="upload-area" id="'+uid+'_area" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event,\''+uid+'\',\''+type+'\')">'
+    +'<div class="upload-area-icon">&#128247;</div>'
+    +'<div class="upload-area-text">Drag &amp; drop screenshot here</div>'
+    +'<div class="upload-area-sub">or paste from clipboard (Cmd+V)</div>'
+    +'<div class="upload-methods">'
+    +'<button class="upload-btn" onclick="browseFile(\''+uid+'\',\''+type+'\')">Browse files</button>'
+    +'<button class="upload-btn" onclick="pasteFile(\''+uid+'\',\''+type+'\')">Paste clipboard</button>'
+    +'</div></div>'
+    +'<div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
 }
 
-function handleFile(input,uid,type){if(input.files&&input.files[0])processFile(input.files[0],uid,type);}
+// Drag and drop
+function dragOver(e){e.preventDefault();e.stopPropagation();e.currentTarget.classList.add('dragover');}
+function dragLeave(e){e.preventDefault();e.stopPropagation();e.currentTarget.classList.remove('dragover');}
+function dropFile(e,uid,type){
+  e.preventDefault();e.stopPropagation();
+  e.currentTarget.classList.remove('dragover');
+  var files=e.dataTransfer.files;
+  if(files&&files[0])processFile(files[0],uid,type);
+}
+
+// Browse (traditional file picker)
+function browseFile(uid,type){
+  var input=document.createElement('input');
+  input.type='file';
+  input.onchange=function(){if(input.files&&input.files[0])processFile(input.files[0],uid,type);};
+  input.click();
+}
+
+// Paste from clipboard
+function pasteFile(uid,type){
+  navigator.clipboard.read().then(function(items){
+    for(var i=0;i<items.length;i++){
+      var imgType=items[i].types.find(function(t){return t.startsWith('image/');});
+      if(imgType){
+        items[i].getType(imgType).then(function(blob){
+          var file=new File([blob],'screenshot.png',{type:blob.type});
+          processFile(file,uid,type);
+        });
+        return;
+      }
+    }
+    alert('No image found in clipboard. Take a screenshot first (Cmd+Shift+4), then try again.');
+  }).catch(function(){
+    alert('Could not access clipboard. Take a screenshot (Cmd+Shift+4), then use drag & drop instead.');
+  });
+}
+
+// Global paste listener — paste screenshot anywhere on the page
+var _lastActiveUpload=null;
+document.addEventListener('paste',function(e){
+  var items=e.clipboardData&&e.clipboardData.items;
+  if(!items)return;
+  for(var i=0;i<items.length;i++){
+    if(items[i].type.indexOf('image')===0){
+      var file=items[i].getAsFile();
+      if(!file)continue;
+      // Find first incomplete upload area
+      var areas=document.querySelectorAll('.upload-area:not(.done)');
+      if(areas.length>0){
+        var area=areas[0];
+        var uid=area.id.replace('_area','');
+        var type=uid.split('_').pop();
+        processFile(file,uid,type);
+      }
+      e.preventDefault();
+      return;
+    }
+  }
+});
 function processFile(file,uid,type){
   var reader=new FileReader();
   reader.onload=function(e){
