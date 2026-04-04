@@ -311,12 +311,24 @@ function taskUpload(label,reward,type,platIdx){
   return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><div class="upload-area" id="'+uid+'_area" onclick="triggerUpload(\''+uid+'\',\''+type+'\')"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div></div><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
 }
 
+var _fileInput=null;
+var _fileUid='';
+var _fileType='';
 function triggerUpload(uid,type){
-  var input=document.createElement('input');
-  input.type='file';
-  input.accept='.jpg,.jpeg,.png,.heic,.webp';
-  input.onchange=function(){if(input.files&&input.files[0])processFile(input.files[0],uid,type);};
-  input.click();
+  _fileUid=uid;
+  _fileType=type;
+  if(!_fileInput){
+    _fileInput=document.createElement('input');
+    _fileInput.type='file';
+    _fileInput.accept='.jpg,.jpeg,.png,.heic,.webp';
+    _fileInput.style.cssText='position:fixed;top:-9999px;left:-9999px;';
+    document.body.appendChild(_fileInput);
+    _fileInput.addEventListener('change',function(){
+      if(_fileInput.files&&_fileInput.files[0])processFile(_fileInput.files[0],_fileUid,_fileType);
+      _fileInput.value='';
+    });
+  }
+  _fileInput.click();
 }
 function processFile(file,uid,type){
   var reader=new FileReader();
