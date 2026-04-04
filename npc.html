@@ -320,7 +320,7 @@ function triggerUpload(uid,type){
   if(!_fileInput){
     _fileInput=document.createElement('input');
     _fileInput.type='file';
-    _fileInput.accept='.jpg,.jpeg,.png,.heic,.webp';
+    // No accept filter — Chrome on Mac freezes when filtering file types
     _fileInput.style.cssText='position:fixed;top:-9999px;left:-9999px;';
     document.body.appendChild(_fileInput);
     _fileInput.addEventListener('change',function(){
