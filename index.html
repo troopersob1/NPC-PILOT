@@ -121,7 +121,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 .btn.ghost{background:transparent;border:1px solid var(--b2);color:var(--t2);}.btn.ghost:hover{border-color:var(--tx);color:var(--tx);}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#000;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;opacity:0;transform:translateY(8px);transition:all .25s;z-index:999;pointer-events:none;}
 .toast.show{opacity:1;transform:translateY(0);}
-@media(max-width:768px){.layout{grid-template-columns:1fr;}.fp,.pp{max-height:none;border-right:none;}.fp{border-bottom:1px solid var(--b1);}.pp{padding:16px;}}
+/* DASHBOARD */
+.dash{margin-top:20px;}
+.dash-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--t2);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.dash-title::after{content:'';flex:1;height:1px;background:var(--b1);}
+.dash-stats{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.dash-stat{background:var(--card);border:1px solid var(--b2);border-radius:9px;padding:12px;text-align:center;}
+.dash-stat-num{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--acc);}
+.dash-stat-lbl{font-size:10px;color:var(--t2);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
+.dash-table{background:var(--card);border:1px solid var(--b2);border-radius:9px;overflow:hidden;}
+.dash-table-hdr{display:grid;grid-template-columns:1fr 120px 80px 80px;padding:8px 12px;border-bottom:1px solid var(--b1);font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;}
+.dash-row{display:grid;grid-template-columns:1fr 120px 80px 80px;padding:8px 12px;border-bottom:1px solid var(--b1);font-size:12px;color:var(--tx);align-items:center;}
+.dash-row:last-child{border-bottom:none;}
+.dash-status{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block;}
+.dash-status.done{background:rgba(0,255,135,.12);color:var(--acc);}
+.dash-status.pending{background:rgba(255,160,0,.12);color:#ffa000;}
+.dash-empty{padding:24px;text-align:center;font-size:12px;color:var(--t3);}
+.dash-refresh{background:transparent;border:1px solid var(--b2);color:var(--t2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.dash-refresh:hover{border-color:var(--acc);color:var(--acc);}
+@media(max-width:768px){.layout{grid-template-columns:1fr;}.fp,.pp{max-height:none;border-right:none;}.fp{border-bottom:1px solid var(--b1);}.pp{padding:16px;}.dash-stats{grid-template-columns:1fr 1fr;}.dash-table-hdr,.dash-row{grid-template-columns:1fr 100px 60px 60px;font-size:11px;}}
 </style>
 </head>
 <body>
@@ -133,7 +151,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 <div class="fp">
   <div><div class="ptitle">New Campaign</div><div class="psub">Fill in your campaign details to generate a shareable NPC task form.</div></div>
   <div class="sh" style="border-top:none;padding-top:0;">Brand</div>
-  <div class="field"><label class="lbl">Anthropic API Key <span class="lbl-n">— required for NPC comment generation</span></label><input type="text" id="apiKey" placeholder="sk-ant-..." style="font-family:'DM Mono',monospace;font-size:12px;"/></div>
   <div class="field"><label class="lbl">Brand Name</label><input type="text" id="brandName" placeholder="e.g. Troopers"/></div>
   <div class="field"><label class="lbl">Campaign Title</label><input type="text" id="campaignTitle" placeholder="e.g. Gig Workers Act Launch"/></div>
   <div class="field">
@@ -217,6 +234,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
       <div class="tt"><span class="ttl">Total</span><span class="ttv ok" id="toneTotal">100%</span></div>
     </div>
   </div>
+  <div class="sh">Google Apps Script</div>
+  <div class="field"><label class="lbl">Apps Script Web App URL <span class="lbl-n">— for NPC submissions &amp; dashboard</span></label><input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:12px;"/></div>
   <div class="sh">Cost Estimate</div>
   <div class="calc">
     <div class="ch"><span class="ch-t">Invoice Preview</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3)">live</span></div>
@@ -277,7 +296,7 @@ function removeFL(btn){var rows=document.querySelectorAll('#followList .fl-row')
 function swTab(t,el){document.querySelectorAll('.stc').forEach(function(x){x.classList.remove('on');});document.querySelectorAll('.stab').forEach(function(x){x.classList.remove('on');});document.getElementById('st_'+t).classList.add('on');el.classList.add('on');}
 function loadCSV(input){var f=input.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){var lines=e.target.result.split('\n').map(function(l){return l.trim();}).filter(Boolean);document.getElementById('csvPreview').textContent=lines.length+' comments loaded.';window._csvComments=lines;};r.readAsText(f);}
 function updateTone(k,v){toneVals[k]=parseInt(v);document.getElementById('tp_'+k).textContent=v+'%';var tot=Object.values(toneVals).reduce(function(a,b){return a+b;},0);var el=document.getElementById('toneTotal');el.textContent=tot+'%';el.className='ttv '+(tot===100?'ok':'err');}
-async function polishWhy(){var raw=document.getElementById('whyEndorse').value.trim();if(!raw){showToast('Write your reason first');return;}var key=document.getElementById('apiKey').value.trim();if(!key){showToast('Enter your Anthropic API key first');return;}var btn=document.getElementById('polishBtn'),note=document.getElementById('polishNote');btn.disabled=true;note.style.display='block';var brand=document.getElementById('brandName').value.trim()||'our brand';var prompt='Polish this into a 2-3 sentence NPC advocacy brief. Authentic, direct, not corporate.\nBrand: '+brand+'\nRaw: '+raw+'\n\nReturn ONLY the polished text.';try{var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':key},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,messages:[{role:'user',content:prompt}]})});var j=await res.json();var txt=(j.content&&j.content[0]&&j.content[0].text)?j.content[0].text.trim():null;if(txt)document.getElementById('whyEndorse').value=txt;else showToast(j.error?j.error.message:'Could not polish');}catch(e){showToast('Polish failed');}btn.disabled=false;btn.innerHTML='&#10024; Polish<br>with AI';note.style.display='none';}
+async function polishWhy(){showToast('Tip: Copy your text and use Claude/ChatGPT to polish it');}
 function nv(id,fb){var v=parseFloat(document.getElementById(id).value);return isNaN(v)?fb:v;}
 function sv(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
 function gv(id){var e=document.getElementById(id);return e?e.value.trim():'';}
@@ -294,21 +313,57 @@ function generate(){
   var L=nv('tLikes',0),C=nv('tComments',0),S=nv('tShares',0),F=nv('tFollows',0);
   var rL=nv('rLike',.5),rC=nv('rComment',2),rS=nv('rShare',3),rF=nv('rFollow',1);
   var sL=L*rL,sC=C*rC,sS=S*rS,sF=F*rF,reward=sL+sC+sS+sF,svc=reward*.25,sst=svc*.08,total=reward+svc+sst;
-  var apiKey=gv('apiKey');
-  var payload={brand:brand,title:title,why:why,urls:urls,followUrls:followUrls,t:{likes:L,comments:C,shares:S,follows:F},r:{like:rL,comment:rC,share:rS,follow:rF},samples:getSamples(),tone:Object.assign({},toneVals),apiKey:apiKey};
+  var scriptUrl=gv('scriptUrl');
+  var payload={brand:brand,title:title,why:why,urls:urls,followUrls:followUrls,t:{likes:L,comments:C,shares:S,follows:F},r:{like:rL,comment:rC,share:rS,follow:rF},samples:getSamples(),tone:Object.assign({},toneVals),scriptUrl:scriptUrl};
   var encoded=encode(payload);
   var npcUrl=location.origin+'/npc.html?c='+encoded;
   var platRows=urls.map(function(p){return '<a class="pr" href="'+p.url+'" target="_blank"><span class="pr-icon">&#128279;</span><div><div class="pr-name">'+p.label+' - '+dom(p.url)+'</div><div class="pr-url">'+p.url+'</div></div></a>';}).join('');
   var followRows=followUrls.map(function(u){return '<div class="pr"><span class="pr-icon">&#128100;</span><div><div class="pr-name">Follow Page</div><div class="pr-url">'+dom(u)+'</div></div></div>';}).join('');
   window._npcUrl = npcUrl;
-  document.getElementById('preview').innerHTML='<div class="result"><div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;">'+brand+'</div><div style="font-size:13px;color:var(--t2);">'+title+'</div></div>'+(urls.length?'<div class="slbl">Posts</div>'+platRows:'')+(followUrls.length?'<div class="slbl">Follow Pages</div>'+followRows:'')+'<div class="slbl">Cost Breakdown</div><div class="cost-box"><div class="cb-hdr">Invoice Summary</div><div class="cb-row"><span class="cb-lbl">Reward Payout</span><span class="cb-val">'+rm(reward)+'</span></div>'+(L>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Like x '+L+'</span><span class="cb-val">'+rm(sL)+'</span></div>':'')+(C>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Comment x '+C+'</span><span class="cb-val">'+rm(sC)+'</span></div>':'')+(S>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Share x '+S+'</span><span class="cb-val">'+rm(sS)+'</span></div>':'')+(F>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Follow x '+F+'</span><span class="cb-val">'+rm(sF)+'</span></div>':'')+'<div class="cb-sep"></div><div class="cb-row cb-hl"><span class="cb-lbl">Service Fee (25%)</span><span class="cb-val">'+rm(svc)+'</span></div><div class="cb-row cb-hl"><span class="cb-lbl">SST 8%</span><span class="cb-val">'+rm(sst)+'</span></div><div class="cb-tot"><span class="cbt-l">Total Payable</span><span class="cbt-v">'+rm(total)+'</span></div></div><div class="slbl">NPC Share Link</div><div class="share-panel"><div class="sp-title">Ready to deploy</div><div class="sp-sub">Share this link with your NPCs. Tap Preview to test it yourself.</div><div class="sp-url" id="npcLink">'+npcUrl+'</div><div class="sp-btns"><button class="btn ghost" onclick="copyLink()">Copy Link</button><button class="btn primary" onclick="openNPC()">Preview NPC Form</button></div></div></div>';
+  window._scriptUrl = scriptUrl;
+  window._campaign = title;
+  var dashHtml='';
+  if(scriptUrl){
+    dashHtml='<div class="dash"><div class="dash-title">NPC Submissions Dashboard <button class="dash-refresh" onclick="loadDashboard()">&#8635; Refresh</button></div><div class="dash-stats"><div class="dash-stat"><div class="dash-stat-num" id="ds_total">-</div><div class="dash-stat-lbl">Total NPCs</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_done">-</div><div class="dash-stat-lbl">Completed</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_pending">-</div><div class="dash-stat-lbl">Pending</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_screens">-</div><div class="dash-stat-lbl">Screenshots</div></div></div><div class="dash-table"><div class="dash-table-hdr"><span>NPC Name</span><span>Submitted</span><span>Tasks</span><span>Status</span></div><div id="dashRows"><div class="dash-empty">Loading submissions...</div></div></div></div>';
+  }
+  document.getElementById('preview').innerHTML='<div class="result"><div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;">'+brand+'</div><div style="font-size:13px;color:var(--t2);">'+title+'</div></div>'+(urls.length?'<div class="slbl">Posts</div>'+platRows:'')+(followUrls.length?'<div class="slbl">Follow Pages</div>'+followRows:'')+'<div class="slbl">Cost Breakdown</div><div class="cost-box"><div class="cb-hdr">Invoice Summary</div><div class="cb-row"><span class="cb-lbl">Reward Payout</span><span class="cb-val">'+rm(reward)+'</span></div>'+(L>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Like x '+L+'</span><span class="cb-val">'+rm(sL)+'</span></div>':'')+(C>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Comment x '+C+'</span><span class="cb-val">'+rm(sC)+'</span></div>':'')+(S>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Share x '+S+'</span><span class="cb-val">'+rm(sS)+'</span></div>':'')+(F>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Follow x '+F+'</span><span class="cb-val">'+rm(sF)+'</span></div>':'')+'<div class="cb-sep"></div><div class="cb-row cb-hl"><span class="cb-lbl">Service Fee (25%)</span><span class="cb-val">'+rm(svc)+'</span></div><div class="cb-row cb-hl"><span class="cb-lbl">SST 8%</span><span class="cb-val">'+rm(sst)+'</span></div><div class="cb-tot"><span class="cbt-l">Total Payable</span><span class="cbt-v">'+rm(total)+'</span></div></div><div class="slbl">NPC Share Link</div><div class="share-panel"><div class="sp-title">Ready to deploy</div><div class="sp-sub">Share this link with your NPCs. Tap Preview to test it yourself.</div><div class="sp-url" id="npcLink">'+npcUrl+'</div><div class="sp-btns"><button class="btn ghost" onclick="copyLink()">Copy Link</button><button class="btn primary" onclick="openNPC()">Preview NPC Form</button></div></div>'+dashHtml+'</div>';
   // On mobile, scroll to preview and auto-open NPC
   var isMobile = window.innerWidth < 769;
   if(isMobile){window.open(npcUrl,'_blank');}else{var pp=document.getElementById('preview');if(pp)pp.scrollIntoView({behavior:'smooth'});}
+  if(scriptUrl)loadDashboard();
 }
 function openNPC(){if(window._npcUrl)window.open(window._npcUrl,'_blank');}
 function copyLink(){var u=(document.getElementById('npcLink')||{}).textContent||'';if(!u)return;navigator.clipboard.writeText(u).then(function(){showToast('Link copied!');}).catch(function(){showToast('Copy manually from the box');});}
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);}
+function loadDashboard(){
+  if(!window._scriptUrl)return;
+  var url=window._scriptUrl+'?action=submissions&campaign='+encodeURIComponent(window._campaign||'');
+  // Also fetch summary
+  var sumUrl=window._scriptUrl+'?action=summary&campaign='+encodeURIComponent(window._campaign||'');
+  fetch(sumUrl).then(function(r){return r.json();}).then(function(d){
+    var el=function(id){return document.getElementById(id);};
+    if(el('ds_total'))el('ds_total').textContent=d.total||0;
+    if(el('ds_done'))el('ds_done').textContent=d.completed||0;
+    if(el('ds_pending'))el('ds_pending').textContent=d.pending||0;
+    if(el('ds_screens'))el('ds_screens').textContent=d.screenshots||0;
+  }).catch(function(){});
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    var rows=d.rows||[];
+    var container=document.getElementById('dashRows');
+    if(!container)return;
+    if(rows.length===0){container.innerHTML='<div class="dash-empty">No submissions yet. Share your NPC link to get started.</div>';return;}
+    var html='';
+    rows.forEach(function(r){
+      var isDone=r.done>=r.total&&r.total>0;
+      html+='<div class="dash-row"><span>'+esc(r.name||'Anonymous')+'</span><span style="font-size:11px;color:var(--t2);">'+esc(r.timestamp||'')+'</span><span>'+r.done+'/'+r.total+'</span><span><span class="dash-status '+(isDone?'done':'pending')+'">'+(isDone?'Done':'In Progress')+'</span></span></div>';
+    });
+    container.innerHTML=html;
+  }).catch(function(){
+    var container=document.getElementById('dashRows');
+    if(container)container.innerHTML='<div class="dash-empty">Could not load dashboard. Check your Apps Script URL.</div>';
+  });
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 recalc();
 </script>
 </body>
