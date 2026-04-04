@@ -619,14 +619,46 @@ function hideLinkPreview(){
 }
 
 /* ── Init ── */
-(function(){
-  var d=decode();
+function showError(){
+  document.getElementById('app').innerHTML='<div class="err-wrap"><div style="font-size:40px;margin-bottom:16px">&#128279;</div><h2 style="font-size:20px;font-weight:600;color:#1B2654;margin-bottom:10px">No campaign found</h2><p style="font-size:14px;color:#5f6368;line-height:1.6">This link does not have a valid campaign attached.<br>Ask your campaign manager for the correct NPC link.</p></div>';
+}
+function startApp(d){
   if(d&&d.brand&&(d.why||(d.urls&&d.urls.length>0))){
     build(d);
     initLinkPreviews();
   } else {
-    document.getElementById('app').innerHTML='<div class="err-wrap"><div style="font-size:40px;margin-bottom:16px">&#128279;</div><h2 style="font-size:20px;font-weight:600;color:#1B2654;margin-bottom:10px">No campaign found</h2><p style="font-size:14px;color:#5f6368;line-height:1.6">This link does not have a valid campaign attached.<br>Ask your campaign manager for the correct NPC link.</p></div>';
+    showError();
   }
+}
+(function(){
+  var params=new URLSearchParams(location.search);
+  var scriptUrl=params.get('s');
+  var campaignId=params.get('id');
+
+  // Method 1: Short URL — fetch campaign from Google Sheet
+  if(scriptUrl&&campaignId){
+    document.getElementById('app').innerHTML='<p style="text-align:center;padding:60px;color:#5f6368">Loading campaign...</p>';
+    fetch(scriptUrl+'?action=getCampaign&id='+encodeURIComponent(campaignId))
+      .then(function(r){return r.json();})
+      .then(function(j){
+        if(j.success&&j.campaign){
+          // Inject scriptUrl into campaign data so NPC can submit
+          j.campaign.scriptUrl=scriptUrl;
+          startApp(j.campaign);
+        } else {
+          showError();
+        }
+      })
+      .catch(function(){
+        // CORS might block — try JSONP-style via redirect
+        showError();
+      });
+    return;
+  }
+
+  // Method 2: Encoded payload in ?c= param (fallback / legacy)
+  var d=decode();
+  startApp(d);
 })();
 </script>
 </body>

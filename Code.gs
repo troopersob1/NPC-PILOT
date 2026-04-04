@@ -20,6 +20,11 @@ function doPost(e) {
     // Handle form POST (e.parameter.data) or raw body (e.postData.contents)
     var raw = (e.parameter && e.parameter.data) ? e.parameter.data : e.postData.contents;
     var data = JSON.parse(raw);
+
+    // Route: save campaign
+    if (data._action === 'saveCampaign') {
+      return saveCampaign(data);
+    }
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // Get or create Submissions sheet
@@ -103,6 +108,11 @@ function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var action = (e.parameter && e.parameter.action) || 'submissions';
+
+    // Retrieve campaign data by ID
+    if (action === 'getCampaign') {
+      return getCampaign(ss, e.parameter.id || '');
+    }
 
     if (action === 'summary') {
       return getSummary(ss, e.parameter.campaign || '');
@@ -207,6 +217,47 @@ function updateSummary(ss, brand, campaign) {
   } else {
     sumSheet.appendRow(row);
   }
+}
+
+function saveCampaign(data) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Campaigns');
+  if (!sheet) {
+    sheet = ss.insertSheet('Campaigns');
+    sheet.appendRow(['ID', 'Created', 'Brand', 'Title', 'Payload']);
+    sheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#1B2654').setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+  }
+
+  // Use client-provided ID or generate one
+  var id = data.clientId || Utilities.getUuid().substring(0, 8);
+
+  // Remove internal fields before storing
+  var payload = JSON.parse(JSON.stringify(data));
+  delete payload._action;
+
+  sheet.appendRow([id, new Date(), payload.brand || '', payload.title || '', JSON.stringify(payload)]);
+
+  return jsonOut({ success: true, id: id });
+}
+
+function getCampaign(ss, id) {
+  if (!id) return jsonOut({ error: 'No campaign ID provided' });
+  var sheet = ss.getSheetByName('Campaigns');
+  if (!sheet) return jsonOut({ error: 'No campaigns found' });
+
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      try {
+        var payload = JSON.parse(data[i][4]);
+        return jsonOut({ success: true, campaign: payload });
+      } catch (e) {
+        return jsonOut({ error: 'Failed to parse campaign data' });
+      }
+    }
+  }
+  return jsonOut({ error: 'Campaign not found' });
 }
 
 function getOrCreateFolder(brand, campaign) {

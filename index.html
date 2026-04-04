@@ -327,19 +327,60 @@ function generate(){
   var sL=L*rL,sC=C*rC,sS=S*rS,sF=F*rF,reward=sL+sC+sS+sF,svc=reward*.25,sst=svc*.08,total=reward+svc+sst;
   var scriptUrl=gv('scriptUrl');
   var payload={brand:brand,title:title,why:why,urls:urls,followUrls:followUrls,t:{likes:L,comments:C,shares:S,follows:F},r:{like:rL,comment:rC,share:rS,follow:rF},samples:getSamples(),tone:Object.assign({},toneVals),scriptUrl:scriptUrl};
-  var encoded=encode(payload);
-  var npcUrl=location.origin+'/npc.html?c='+encoded;
+
   var platRows=urls.map(function(p){return '<a class="pr" href="'+p.url+'" target="_blank"><span class="pr-icon">&#128279;</span><div><div class="pr-name">'+p.label+' - '+dom(p.url)+'</div><div class="pr-url">'+p.url+'</div></div></a>';}).join('');
   var followRows=followUrls.map(function(u){return '<div class="pr"><span class="pr-icon">&#128100;</span><div><div class="pr-name">Follow Page</div><div class="pr-url">'+dom(u)+'</div></div></div>';}).join('');
-  window._npcUrl = npcUrl;
   window._scriptUrl = scriptUrl;
   window._campaign = title;
+
+  // Save campaign to Google Sheet and get short URL
+  if(scriptUrl){
+    var btn=document.querySelector('.btn-gen');
+    btn.textContent='Saving campaign...';btn.disabled=true;
+    var savePayload=JSON.parse(JSON.stringify(payload));
+    savePayload._action='saveCampaign';
+    // Use hidden form to POST (same method as NPC submissions)
+    var iframeName='save_'+Date.now();
+    var iframe=document.createElement('iframe');
+    iframe.name=iframeName;iframe.style.display='none';
+    document.body.appendChild(iframe);
+    // Listen for response via iframe message (won't work cross-origin)
+    // Instead, use fetch with no-cors to save, then construct URL
+    fetch(scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(savePayload)});
+    // Since no-cors can't read response, also try with redirect
+    // Use a unique ID we generate client-side
+    var campaignId=Date.now().toString(36)+Math.random().toString(36).substring(2,6);
+    // Save with our ID
+    savePayload.clientId=campaignId;
+    var form=document.createElement('form');
+    form.method='POST';form.action=scriptUrl;form.target=iframeName;
+    var input=document.createElement('input');input.type='hidden';input.name='data';
+    input.value=JSON.stringify(savePayload);form.appendChild(input);
+    document.body.appendChild(form);form.submit();
+    setTimeout(function(){try{document.body.removeChild(form);document.body.removeChild(iframe);}catch(e){}},3000);
+
+    // Generate short NPC URL using script URL + campaign ID
+    var npcUrl=location.origin+'/npc.html?s='+encodeURIComponent(scriptUrl)+'&id='+campaignId;
+    // Also keep encoded fallback for preview
+    var encoded=encode(payload);
+    var fallbackUrl=location.origin+'/npc.html?c='+encoded;
+    window._npcUrl=npcUrl;
+    btn.textContent='Generate NPC Task Form';btn.disabled=false;
+    showResult(brand,title,platRows,followRows,L,C,S,F,sL,sC,sS,sF,reward,svc,sst,total,npcUrl,scriptUrl);
+  } else {
+    // No Apps Script — use encoded URL (fallback)
+    var encoded=encode(payload);
+    var npcUrl=location.origin+'/npc.html?c='+encoded;
+    window._npcUrl=npcUrl;
+    showResult(brand,title,platRows,followRows,L,C,S,F,sL,sC,sS,sF,reward,svc,sst,total,npcUrl,scriptUrl);
+  }
+}
+function showResult(brand,title,platRows,followRows,L,C,S,F,sL,sC,sS,sF,reward,svc,sst,total,npcUrl,scriptUrl){
   var dashHtml='';
   if(scriptUrl){
     dashHtml='<div class="dash"><div class="dash-title">NPC Submissions Dashboard <button class="dash-refresh" onclick="loadDashboard()">&#8635; Refresh</button></div><div class="dash-stats"><div class="dash-stat"><div class="dash-stat-num" id="ds_total">-</div><div class="dash-stat-lbl">Total NPCs</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_done">-</div><div class="dash-stat-lbl">Completed</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_pending">-</div><div class="dash-stat-lbl">Pending</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_screens">-</div><div class="dash-stat-lbl">Screenshots</div></div></div><div class="dash-table"><div class="dash-table-hdr"><span>NPC Name</span><span>Submitted</span><span>Tasks</span><span>Status</span></div><div id="dashRows"><div class="dash-empty">Loading submissions...</div></div></div></div>';
   }
-  document.getElementById('preview').innerHTML='<div class="result"><div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;">'+brand+'</div><div style="font-size:13px;color:var(--t2);">'+title+'</div></div>'+(urls.length?'<div class="slbl">Posts</div>'+platRows:'')+(followUrls.length?'<div class="slbl">Follow Pages</div>'+followRows:'')+'<div class="slbl">Cost Breakdown</div><div class="cost-box"><div class="cb-hdr">Invoice Summary</div><div class="cb-row"><span class="cb-lbl">Reward Payout</span><span class="cb-val">'+rm(reward)+'</span></div>'+(L>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Like x '+L+'</span><span class="cb-val">'+rm(sL)+'</span></div>':'')+(C>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Comment x '+C+'</span><span class="cb-val">'+rm(sC)+'</span></div>':'')+(S>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Share x '+S+'</span><span class="cb-val">'+rm(sS)+'</span></div>':'')+(F>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Follow x '+F+'</span><span class="cb-val">'+rm(sF)+'</span></div>':'')+'<div class="cb-sep"></div><div class="cb-row cb-hl"><span class="cb-lbl">Service Fee (25%)</span><span class="cb-val">'+rm(svc)+'</span></div><div class="cb-row cb-hl"><span class="cb-lbl">SST 8%</span><span class="cb-val">'+rm(sst)+'</span></div><div class="cb-tot"><span class="cbt-l">Total Payable</span><span class="cbt-v">'+rm(total)+'</span></div></div><div class="slbl">NPC Share Link</div><div class="share-panel"><div class="sp-title">Ready to deploy</div><div class="sp-sub">Share this link with your NPCs. Tap Preview to test it yourself.</div><div class="sp-url" id="npcLink">'+npcUrl+'</div><div class="sp-btns"><button class="btn ghost" onclick="copyLink()">Copy Link</button><button class="btn primary" onclick="openNPC()">Preview NPC Form</button></div></div>'+dashHtml+'</div>';
-  // On mobile, scroll to preview and auto-open NPC
+  document.getElementById('preview').innerHTML='<div class="result"><div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;">'+brand+'</div><div style="font-size:13px;color:var(--t2);">'+title+'</div></div>'+(platRows?'<div class="slbl">Posts</div>'+platRows:'')+(followRows?'<div class="slbl">Follow Pages</div>'+followRows:'')+'<div class="slbl">Cost Breakdown</div><div class="cost-box"><div class="cb-hdr">Invoice Summary</div><div class="cb-row"><span class="cb-lbl">Reward Payout</span><span class="cb-val">'+rm(reward)+'</span></div>'+(L>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Like x '+L+'</span><span class="cb-val">'+rm(sL)+'</span></div>':'')+(C>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Comment x '+C+'</span><span class="cb-val">'+rm(sC)+'</span></div>':'')+(S>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Share x '+S+'</span><span class="cb-val">'+rm(sS)+'</span></div>':'')+(F>0?'<div class="cb-row cb-ind"><span class="cb-lbl">Follow x '+F+'</span><span class="cb-val">'+rm(sF)+'</span></div>':'')+'<div class="cb-sep"></div><div class="cb-row cb-hl"><span class="cb-lbl">Service Fee (25%)</span><span class="cb-val">'+rm(svc)+'</span></div><div class="cb-row cb-hl"><span class="cb-lbl">SST 8%</span><span class="cb-val">'+rm(sst)+'</span></div><div class="cb-tot"><span class="cbt-l">Total Payable</span><span class="cbt-v">'+rm(total)+'</span></div></div><div class="slbl">NPC Share Link</div><div class="share-panel"><div class="sp-title">Ready to deploy</div><div class="sp-sub">Share this link with your NPCs. Tap Preview to test it yourself.</div><div class="sp-url" id="npcLink">'+npcUrl+'</div><div class="sp-btns"><button class="btn ghost" onclick="copyLink()">Copy Link</button><button class="btn primary" onclick="openNPC()">Preview NPC Form</button></div></div>'+dashHtml+'</div>';
   var isMobile = window.innerWidth < 769;
   if(isMobile){window.open(npcUrl,'_blank');}else{var pp=document.getElementById('preview');if(pp)pp.scrollIntoView({behavior:'smooth'});}
   if(scriptUrl)loadDashboard();
