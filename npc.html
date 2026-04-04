@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NPC.co</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Google Sans',Roboto,Arial,sans-serif;background:#f0f4f9;min-height:100vh;padding:0 0 80px}
+.form-header{background:#1B2654;border-radius:0;padding:24px 16px 20px;border-top:8px solid #F5812A;max-width:640px;margin:0 auto}
+.form-header .logo{font-size:20px;font-weight:700;color:#F5812A;letter-spacing:1px;margin-bottom:12px}
+.form-header h1{font-size:19px;font-weight:600;color:#fff;margin-bottom:8px;line-height:1.3}
+.form-header p{font-size:13px;color:rgba(255,255,255,.75);line-height:1.6}
+.reward-banner{background:rgba(255,255,255,.08);border-radius:8px;padding:12px 14px;margin-top:14px;display:flex;align-items:flex-start;gap:12px}
+.reward-banner .icon{font-size:22px;flex-shrink:0;margin-top:2px}
+.reward-banner strong{color:#F5812A;display:block;font-size:13px;margin-bottom:3px}
+.reward-banner p{font-size:12px;color:rgba(255,255,255,.85);line-height:1.5}
+.req-note{background:#fff;max-width:640px;margin:0 auto;padding:8px 16px;font-size:12px;color:#5f6368;border-bottom:1px solid #e0e0e0}
+.req-note span{color:#d93025}
+/* PROGRESS */
+.prog-wrap{background:#fff;max-width:640px;margin:0 auto;padding:12px 16px;border-bottom:1px solid #e0e0e0;position:sticky;top:0;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.prog-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.prog-title{font-size:12px;font-weight:600;color:#1B2654}
+.prog-pct{font-size:12px;font-weight:700;color:#F5812A}
+.prog-bar{height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#1B2654,#F5812A);border-radius:4px;transition:width .4s ease;width:0%}
+.prog-tasks{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.prog-task{font-size:11px;padding:3px 8px;border-radius:20px;background:#f0f4f9;color:#5f6368;border:1px solid #e0e0e0}
+.prog-task.done{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7}
+/* CARDS */
+.card{background:#fff;max-width:640px;margin:10px auto 0;border-radius:0;padding:16px;border-top:1px solid #e0e0e0;border-bottom:1px solid #e0e0e0}
+.section-title{font-size:16px;font-weight:600;color:#1B2654;padding-bottom:10px;border-bottom:2px solid #F5812A;margin-bottom:12px}
+.field-group{margin-top:18px}
+.field-label{display:block;font-size:14px;font-weight:500;color:#202124;margin-bottom:8px}
+.field-label .req{color:#d93025;margin-left:3px}
+input[type=text],input[type=email],select{width:100%;border:none;border-bottom:1px solid #9aa0a6;padding:10px 0;font-size:15px;color:#202124;outline:none;background:transparent;transition:border-color .2s;font-family:inherit}
+input[type=text]:focus,input[type=email]:focus,select:focus{border-bottom:2px solid #1B2654}
+/* PLATFORM BLOCK */
+.plat-block{border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:14px;overflow:hidden}
+.plat-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;color:#fff;display:inline-block}
+.pb-tiktok{background:#010101}.pb-instagram{background:#e1306c}.pb-facebook{background:#1877f2}
+.pb-twitter{background:#1da1f2}.pb-linkedin{background:#0077b5}.pb-youtube{background:#ff0000}.pb-xiaohongshu{background:#fe2c55}
+.plat-link{font-size:13px;color:#1B2654;word-break:break-all;text-decoration:none}
+.post-card{border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-bottom:12px}
+.post-card-hdr{background:#1B2654;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.post-icon{font-size:22px;flex-shrink:0}
+.post-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:1px}
+.post-sub{font-size:11px;color:rgba(255,255,255,.6)}
+.post-why{padding:10px 14px;background:#fff8f2;font-size:13px;color:#1B2654;line-height:1.6}
+.post-why strong{color:#F5812A}
+.how-box{background:#fff8f2;border:1px solid #F5812A;border-radius:6px;padding:10px 12px;margin-bottom:12px}
+.how-title{font-size:11px;font-weight:700;color:#F5812A;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.how-box ol{font-size:12px;color:#5f6368;line-height:1.8;padding-left:16px}
+/* TASK ROW - upload based, no checkbox */
+.task-section{margin-top:8px}
+.task-label{font-size:13px;font-weight:600;color:#202124;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.task-rw{background:#fff3e8;border:1px solid #F5812A;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;color:#F5812A;white-space:nowrap}
+.upload-area{border:2px dashed #c5cae9;border-radius:10px;padding:16px 14px;background:#fafafa;text-align:center;cursor:pointer;position:relative;margin-top:6px;transition:all .2s}
+.upload-area.done{border-color:#34A853;background:#f0fff4;border-style:solid}
+.upload-area-icon{font-size:28px;margin-bottom:4px}
+.upload-area-text{font-size:13px;color:#5f6368;font-weight:500}
+.upload-area-sub{font-size:11px;color:#9aa0a6;margin-top:2px}
+.upload-area input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.upload-preview{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7}
+.upload-preview img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #ccc;flex-shrink:0}
+.upload-preview-info{flex:1;min-width:0}
+.upload-preview-name{font-size:12px;color:#2e7d32;font-weight:600;word-break:break-all}
+.upload-preview-status{font-size:11px;color:#388e3c;margin-top:2px}
+.upload-remove{background:none;border:none;color:#c62828;font-size:20px;cursor:pointer;padding:2px 4px;flex-shrink:0;line-height:1}
+/* GENERATOR */
+.gen-box{background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-top:10px}
+.gen-box-title{font-size:12px;font-weight:600;color:#1B2654;margin-bottom:10px}
+.lang-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.lang-btn{padding:6px 13px;font-size:12px;font-weight:500;border-radius:20px;border:1px solid #ccc;background:#fff;color:#5f6368;cursor:pointer;font-family:inherit;transition:all .15s}
+.lang-btn.active{background:#1B2654;color:#fff;border-color:#1B2654}
+.gen-result{margin-top:10px}
+.gen-text-box{background:#fff;border:2px solid #e0e0e0;border-radius:8px;padding:13px;font-size:14px;color:#202124;line-height:1.7;white-space:pre-wrap;word-break:break-word;min-height:60px;position:relative}
+.gen-text-box.fresh{border-color:#1B2654}
+.gen-text-box.loading{color:#9aa0a6;font-style:italic}
+.gen-action-row{display:flex;gap:8px;margin-top:10px}
+.btn-copy{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#1B2654;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-copy.copied{background:#34A853}
+.btn-copy:disabled{opacity:.5;cursor:not-allowed}
+.btn-retry{display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;color:#1B2654;border:2px solid #1B2654;border-radius:8px;padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-retry:disabled{opacity:.5;cursor:not-allowed}
+.helper-text{font-size:12px;color:#5f6368;margin-top:8px;line-height:1.5}
+/* FOLLOW */
+.follow-block{border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px}
+.follow-name{font-size:13px;font-weight:600;color:#1B2654;margin-bottom:4px}
+.follow-url-link{font-size:12px;color:#5f6368;word-break:break-all;margin-bottom:10px}
+/* COMPLETION */
+.completion-banner{background:#1B2654;border-top:4px solid #F5812A;max-width:640px;margin:10px auto 0;padding:20px 16px;text-align:center}
+.completion-banner h2{color:#F5812A;font-size:20px;font-weight:700;margin-bottom:8px}
+.completion-banner p{color:rgba(255,255,255,.85);font-size:13px;line-height:1.6}
+/* SUBMIT */
+.submit-row{max-width:640px;margin:16px auto 0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px}
+.btn-submit{background:#1B2654;color:#fff;border:none;border-radius:8px;padding:15px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;flex:1}
+.btn-submit:active{background:#F5812A}
+.btn-clear{background:transparent;color:#1B2654;border:none;font-size:14px;cursor:pointer;font-family:inherit;text-decoration:underline;padding:8px}
+.err-wrap{max-width:640px;margin:60px auto;background:#fff;border-radius:12px;padding:40px;text-align:center;border:1px solid #e0e0e0}
+</style>
+</head>
+<body>
+<div id="app"><p style="text-align:center;padding:60px;color:#5f6368">Loading...</p></div>
+<script>
+
+var C=null;
+var sessions={};
+var uploadsDone={};
+var totalTasks=0;
+var doneTasks=0;
+var generating={};
+
+var PM={tiktok:{cls:'pb-tiktok',label:'TikTok'},instagram:{cls:'pb-instagram',label:'Instagram'},facebook:{cls:'pb-facebook',label:'Facebook'},twitter:{cls:'pb-twitter',label:'X/Twitter'},linkedin:{cls:'pb-linkedin',label:'LinkedIn'},youtube:{cls:'pb-youtube',label:'YouTube'},xiaohongshu:{cls:'pb-xiaohongshu',label:'Xiaohongshu'}};
+var LL={en:'English',my:'Bahasa Malaysia',zh:'Mandarin',mgl:'Manglish'};
+
+var LANG_PROMPTS={
+  en:'in English',
+  my:'in Bahasa Malaysia',
+  zh:'in Mandarin Chinese',
+  mgl:'in Manglish (Malaysian English — casual mix of English, Malay, and slang like "la", "leh", "betul", "kan")'
+};
+
+function decode(){
+  var raw=new URLSearchParams(location.search).get('c');
+  if(!raw)return null;
+  var b64=raw.replace(/ /g,'+').replace(/-/g,'+').replace(/_/g,'/');
+  var pad=b64.length%4;if(pad)b64+='===='.slice(pad);
+  try{
+    var bin=atob(b64);
+    var bytes=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    var json=new TextDecoder('utf-8').decode(bytes);
+    var d=JSON.parse(json);
+    if(d&&d.brand)return d;
+  }catch(e1){}
+  try{
+    return JSON.parse(decodeURIComponent(escape(atob(b64))));
+  }catch(e2){}
+  return null;
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+function dom(url){try{return new URL(url).hostname.replace('www.','')}catch(e){return url||'';}}
+function rp(v){return 'RM '+parseFloat(v||0).toFixed(2);}
+
+/* ── AI Generation ── */
+
+function buildPrompt(type, lang, brand, why, samples, tone){
+  var langLabel=LANG_PROMPTS[lang]||'in English';
+  var toneDesc=[];
+  if(tone){
+    if(tone.advocacy)toneDesc.push(tone.advocacy+'% fully supportive/advocacy');
+    if(tone.neutral)toneDesc.push(tone.neutral+'% neutral/factual');
+    if(tone.short)toneDesc.push(tone.short+'% very short (under 8 words)');
+    if(tone.discussion)toneDesc.push(tone.discussion+'% discussion/question');
+  }
+  var toneStr=toneDesc.length?'Tone mix: '+toneDesc.join(', ')+'. Pick ONE tone style randomly for this generation.':'';
+
+  if(type==='cap'){
+    return 'You are generating a social media CAPTION/SHARE text for an NPC (paid advocate) to use when sharing a post.\n\n'
+      +'Brand: '+brand+'\n'
+      +'Why endorse: '+why+'\n'
+      +(samples?'Sample style reference:\n'+samples+'\n':'')
+      +toneStr+'\n\n'
+      +'Write ONE caption '+langLabel+'. It should feel like a real person sharing the post — authentic, not corporate. Include 1-3 relevant hashtags. Do NOT use quotes around it. Return ONLY the caption text, nothing else.';
+  } else {
+    return 'You are generating a social media COMMENT for an NPC (paid advocate) to post on a brand\'s post.\n\n'
+      +'Brand: '+brand+'\n'
+      +'Why endorse: '+why+'\n'
+      +(samples?'Sample style reference:\n'+samples+'\n':'')
+      +toneStr+'\n\n'
+      +'Write ONE comment '+langLabel+'. It should feel like a genuine reaction from a real person — not a bot. Keep it natural. Vary length based on tone. Do NOT use quotes around it. Return ONLY the comment text, nothing else.';
+  }
+}
+
+function initSession(platIdx, type, langs){
+  if(!sessions[platIdx])sessions[platIdx]={};
+  if(sessions[platIdx][type])return;
+  sessions[platIdx][type]={used:[], currentLang:langs[0]||'en', langs:langs};
+}
+
+async function generateText(platIdx, type){
+  var id=platIdx+'_'+type;
+  if(generating[id])return;
+  generating[id]=true;
+
+  var s=sessions[platIdx]&&sessions[platIdx][type];
+  if(!s||!C){generating[id]=false;return;}
+
+  var gtEl=document.getElementById('gt_'+id);
+  var copyBtn=document.getElementById('gc_'+id);
+  var retryBtn=document.getElementById('gr_btn_'+id);
+  if(gtEl){gtEl.textContent='Generating...';gtEl.className='gen-text-box loading';}
+  if(copyBtn)copyBtn.disabled=true;
+  if(retryBtn)retryBtn.disabled=true;
+
+  var lang=s.currentLang;
+  var prompt=buildPrompt(type, lang, C.brand||'Brand', C.why||'', C.samples||'', C.tone);
+
+  // Add used texts to avoid repetition
+  if(s.used.length>0){
+    prompt+='\n\nDo NOT repeat or closely paraphrase any of these previously generated texts:\n'+s.used.slice(-10).map(function(t,i){return (i+1)+'. '+t;}).join('\n');
+  }
+
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+        'x-api-key': C.apiKey || ''
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:300,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    var j=await res.json();
+    var txt=(j.content&&j.content[0]&&j.content[0].text)?j.content[0].text.trim():null;
+
+    if(txt){
+      if(gtEl){gtEl.textContent=txt;gtEl.className='gen-text-box fresh';gtEl.dataset.current=txt;}
+      if(copyBtn){copyBtn.disabled=false;copyBtn.textContent='\uD83D\uDCCB Copy & Use';}
+    } else {
+      var errMsg=(j.error&&j.error.message)?j.error.message:'Could not generate text. Check API key.';
+      if(gtEl){gtEl.textContent=errMsg;gtEl.className='gen-text-box';}
+    }
+  }catch(e){
+    if(gtEl){gtEl.textContent='Generation failed. Check your connection.';gtEl.className='gen-text-box';}
+  }
+
+  generating[id]=false;
+  if(retryBtn)retryBtn.disabled=false;
+}
+
+function doRetry(idx,type){generateText(idx,type);}
+
+function doCopy(idx,type){
+  var id=idx+'_'+type;
+  var gtEl=document.getElementById('gt_'+id);
+  var gcEl=document.getElementById('gc_'+id);
+  if(!gtEl||!gtEl.dataset.current)return;
+  var txt=gtEl.dataset.current;
+
+  // Retire text
+  var s=sessions[idx]&&sessions[idx][type];
+  if(s&&s.used.indexOf(txt)<0)s.used.push(txt);
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(txt).then(function(){
+    if(gcEl){gcEl.textContent='Copied!';gcEl.className='btn-copy copied';setTimeout(function(){gcEl.textContent='\uD83D\uDCCB Copy & Use';gcEl.className='btn-copy';},2500);}
+  }).catch(function(){
+    var ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(ta);ta.focus();ta.select();
+    try{document.execCommand('copy');if(gcEl){gcEl.textContent='Copied!';gcEl.className='btn-copy copied';setTimeout(function(){gcEl.textContent='\uD83D\uDCCB Copy & Use';gcEl.className='btn-copy';},2500);}}catch(e){}
+    document.body.removeChild(ta);
+  });
+
+  // Generate next one after a short delay
+  setTimeout(function(){generateText(idx,type);},300);
+}
+
+function switchLang(idx,type,lang){
+  var id=idx+'_'+type;
+  document.querySelectorAll('[id^="lb_'+id+'_"]').forEach(function(el){el.classList.remove('active');});
+  var el=document.getElementById('lb_'+id+'_'+lang);if(el)el.classList.add('active');
+  var s=sessions[idx]&&sessions[idx][type];
+  if(s)s.currentLang=lang;
+  generateText(idx,type);
+}
+
+/* ── Build UI ── */
+
+function build(d){
+  C=d;
+  var brand=d.brand||'Brand',title=d.title||'Engagement Campaign',why=d.why||'';
+  var urls=d.urls||[],fUrls=d.followUrls||[],t=d.t||{},r=d.r||{};
+
+  totalTasks=0;
+  urls.forEach(function(){
+    if(t.likes>0)totalTasks++;
+    if(t.shares>0)totalTasks++;
+    if(t.comments>0)totalTasks++;
+  });
+  if(t.follows>0)totalTasks+=fUrls.length;
+
+  // Init sessions
+  urls.forEach(function(p,i){
+    var langs=p.langs||['en'];
+    if(t.shares>0)initSession(i,'cap',langs);
+    if(t.comments>0)initSession(i,'cmt',langs);
+  });
+
+  var platBlocks='';
+  urls.forEach(function(p,i){platBlocks+=platBlock(p,i,brand,why,t,r,d);});
+
+  var followSec='';
+  if(fUrls.length>0&&t.follows>0){
+    followSec='<div class="card"><div class="section-title">Follow Our Pages</div><p style="font-size:13px;color:#5f6368;margin-bottom:14px;line-height:1.6">Follow the accounts below. Each follow earns <strong style="color:#F5812A">'+rp(r.follow)+'</strong>. Upload a screenshot to confirm.</p>';
+    fUrls.forEach(function(u,fi){followSec+=followBlock(u,r.follow,fi);});
+    followSec+='</div>';
+  }
+
+  var claimNum=(fUrls.length>0&&t.follows>0)?'3':'2';
+  var html='<div class="form-header"><div class="logo">NPC.co</div><h1>'+esc(brand)+' \u2014 '+esc(title)+'</h1><p>Earn rewards by engaging with live social media posts. Upload a screenshot for every completed action.</p><div class="reward-banner"><div class="icon">&#127873;</div><div><strong>Show support, earn a reward</strong><p>'+esc(why||'Complete the tasks below, upload screenshots, and submit to claim your reward.')+'</p></div></div></div>';
+  html+='<div class="req-note"><span>*</span> Indicates required question</div>';
+  html+='<div class="prog-wrap"><div class="prog-label"><span class="prog-title">Task Progress</span><span class="prog-pct" id="prog_pct">0 of '+totalTasks+' done</span></div><div class="prog-bar"><div class="prog-fill" id="prog_fill"></div></div><div class="prog-tasks" id="prog_tasks"></div></div>';
+  html+='<div class="card"><div class="section-title">Section 1 \u2014 Engage With Our Posts</div><p style="font-size:13px;color:#5f6368;margin-bottom:16px;line-height:1.6">Upload a screenshot for each completed action to confirm it is done.</p>'+platBlocks+'</div>';
+  html+=followSec;
+  html+='<div class="card"><div class="section-title">Section '+claimNum+' \u2014 Reward Claim</div>'+fld('Name as per IC','text','Full name as shown on your IC',true)+fld('IC Number','text','e.g. 900101-14-1234',true)+fld('Phone Number','text','e.g. 012-3456789',true)+bankSel()+fld('Bank Account Number','text','Your bank account number',true)+fld('Email Address','email','For reward confirmation',true)+'</div>';
+  html+='<div class="submit-row"><button class="btn-clear" onclick="doClear()">Clear</button><button class="btn-submit" onclick="doSubmit()">Submit &amp; Claim Reward</button></div>';
+  document.getElementById('app').innerHTML=html;
+  updateProgress();
+  document.querySelectorAll('input,select').forEach(function(el){el.addEventListener('input',updateProgress);el.addEventListener('change',updateProgress);});
+
+  // Auto-generate first text for each generator
+  setTimeout(function(){
+    if(!d.urls)return;
+    d.urls.forEach(function(p,i){
+      if(d.t&&d.t.shares>0&&sessions[i]&&sessions[i].cap)generateText(i,'cap');
+      if(d.t&&d.t.comments>0&&sessions[i]&&sessions[i].cmt)generateText(i,'cmt');
+    });
+  },200);
+}
+
+function platBlock(p,i,brand,why,t,r,d){
+  var m=PM[p.key]||{cls:'pb-linkedin',label:p.label||'Platform'};
+  var steps='<li>Tap the link above to open the post</li>';
+  if(t.likes>0)steps+='<li>Like the post and upload a screenshot below</li>';
+  if(t.shares>0)steps+='<li>Generate a caption, edit it, share/repost the post, upload a screenshot</li>';
+  if(t.comments>0)steps+='<li>Generate a comment, edit it, post it as a comment, upload a screenshot</li>';
+  var likeTask=t.likes>0?taskUpload('Like the post',r.like,'like',i):'';
+  var shareTask=t.shares>0?taskUpload('Shared / reposted with caption',r.share,'share',i):'';
+  var commentTask=t.comments>0?taskUpload('Left a comment',r.comment,'comment',i):'';
+  var capG=t.shares>0?genBox(i,'cap',p.langs||['en']):'';
+  var cmtG=t.comments>0?genBox(i,'cmt',p.langs||['en']):'';
+  return '<div class="plat-block"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span class="plat-badge '+m.cls+'">'+m.label+'</span><a class="plat-link" href="'+esc(p.url)+'" target="_blank">'+esc(dom(p.url))+'</a></div><div class="post-card"><div class="post-card-hdr"><div class="post-icon">&#128247;</div><div><div class="post-name">'+esc(brand)+' \u2014 '+m.label+'</div><div class="post-sub">'+m.label+' Post</div></div></div><div class="post-why"><strong>Why engage?</strong> '+esc(why||'Support '+brand+' by engaging with this post.')+'</div></div><div class="how-box"><div class="how-title">How to complete</div><ol>'+steps+'</ol></div>'+likeTask+capG+shareTask+cmtG+commentTask+'</div>';
+}
+
+function taskUpload(label,reward,type,platIdx){
+  var uid='u_'+platIdx+'_'+type;
+  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><div class="upload-area" id="'+uid+'_area"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div><input type="file" accept="image/*" capture="environment" onchange="handleUpload(this,\''+uid+'\',\''+type+'\')"/></div><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
+}
+
+function handleUpload(input,uid,type){if(input.files&&input.files[0])processFile(input.files[0],uid,type);}
+function processFile(file,uid,type){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var area=document.getElementById(uid+'_area');
+    var prev=document.getElementById(uid+'_prev');
+    if(area)area.classList.add('done');
+    if(prev){
+      prev.style.display='flex';
+      prev.innerHTML='<img src="'+e.target.result+'"/><div class="upload-preview-info"><div class="upload-preview-name">'+esc(file.name)+'</div><div class="upload-preview-status">&#9989; Screenshot uploaded</div></div><button class="upload-remove" onclick="removeUpload(\''+uid+'\',\''+type+'\')">&#215;</button>';
+    }
+    if(!uploadsDone[uid]){uploadsDone[uid]=true;doneTasks++;updateProgress();}
+  };reader.readAsDataURL(file);
+}
+function removeUpload(uid,type){
+  var area=document.getElementById(uid+'_area');var prev=document.getElementById(uid+'_prev');
+  if(area)area.classList.remove('done');
+  if(prev){prev.style.display='none';prev.innerHTML='';}
+  if(uploadsDone[uid]){delete uploadsDone[uid];doneTasks=Math.max(0,doneTasks-1);updateProgress();}
+}
+
+function updateProgress(){
+  var pct=totalTasks>0?Math.round(doneTasks/totalTasks*100):0;
+  var fill=document.getElementById('prog_fill');
+  var pctEl=document.getElementById('prog_pct');
+  if(fill)fill.style.width=pct+'%';
+  if(pctEl)pctEl.textContent=doneTasks+' of '+totalTasks+' done';
+  var tasksEl=document.getElementById('prog_tasks');
+  if(tasksEl&&C){
+    var t=C.t||{},urls=C.urls||[],fUrls=C.followUrls||[];
+    var pills=[];
+    urls.forEach(function(p,i){
+      if(t.likes>0)pills.push({label:p.label+' Like',uid:'u_'+i+'_like'});
+      if(t.shares>0)pills.push({label:p.label+' Share',uid:'u_'+i+'_share'});
+      if(t.comments>0)pills.push({label:p.label+' Comment',uid:'u_'+i+'_comment'});
+    });
+    fUrls.forEach(function(u,fi){
+      if(t.follows>0)pills.push({label:'Follow '+dom(u),uid:'u_follow_'+fi});
+    });
+    tasksEl.innerHTML=pills.map(function(p){return '<span class="prog-task'+(uploadsDone[p.uid]?' done':'')+'">'+(uploadsDone[p.uid]?'&#9989; ':'')+p.label+'</span>';}).join('');
+  }
+  if(doneTasks>=totalTasks&&totalTasks>0)showCompletion();
+}
+
+function showCompletion(){if(document.getElementById('completionBanner'))return;var b=document.createElement('div');b.id='completionBanner';b.className='completion-banner';b.innerHTML='<h2>&#127881; All Tasks Done!</h2><p>You\u2019ve completed all engagement tasks. Scroll down, fill in your reward claim details, and submit.</p>';var app=document.getElementById('app');if(app){var firstCard=app.querySelector('.card');if(firstCard)app.insertBefore(b,firstCard);}else document.body.insertBefore(b,document.body.firstChild);}
+
+function followBlock(url,reward,fi){
+  var uid='u_follow_'+fi;
+  return '<div class="follow-block"><div class="follow-name">&#128100; '+esc(dom(url))+'</div><div class="follow-url-link"><a href="'+esc(url)+'" target="_blank" style="color:#1B2654">'+esc(url)+'</a></div>'+taskUpload('Followed this account',reward,'follow_'+fi,'follow')+'</div>';
+}
+
+function genBox(idx,type,langs){
+  var id=idx+'_'+type;
+  var title=type==='cap'?'Caption Generator':'Comment Generator';
+  var curLang=langs[0]||'en';
+  var lbs=langs.map(function(lk){return '<button class="lang-btn'+(lk===curLang?' active':'')+'" id="lb_'+id+'_'+lk+'" onclick="switchLang('+idx+',\''+type+'\',\''+lk+'\')">'+LL[lk]+'</button>';}).join('');
+  return '<div class="gen-box"><div class="gen-box-title">'+title+'</div><div class="lang-row">'+lbs+'</div><div class="gen-result" id="gr_'+id+'"><div class="gen-text-box" id="gt_'+id+'">Click Generate to create a '+title.toLowerCase()+'</div><div class="gen-action-row"><button class="btn-copy" id="gc_'+id+'" onclick="doCopy('+idx+',\''+type+'\')" disabled>&#128203; Copy &amp; Use</button><button class="btn-retry" id="gr_btn_'+id+'" onclick="doRetry('+idx+',\''+type+'\')">&#9998; Generate</button></div><p class="helper-text">AI-generated \u2014 edit before posting to make it sound like you.</p></div></div>';
+}
+
+function fld(label,type,ph,req){return '<div class="field-group"><label class="field-label">'+label+(req?'<span class="req"> *</span>':'')+' </label><input type="'+type+'" placeholder="'+ph+'" /></div>';}
+function bankSel(){var b=['08 - AmBank','12 - Alliance Bank','32 - Affin Bank','49 - Agro Bank','35 - CIMB Bank','17 - Citibank','24 - Hong Leong Bank','22 - HSBC','27 - Maybank','29 - OCBC','33 - Public Bank','18 - RHB','14 - Standard Chartered','26 - UOB','45 - Bank Islam','41 - Bank Muamalat','10 - BSN','02 - Bank Rakyat','75 - MBSB'];return '<div class="field-group"><label class="field-label">Bank Name<span class="req"> *</span></label><select><option value="" disabled selected>Select your bank</option>'+b.map(function(x){return '<option>'+x+'</option>';}).join('')+'</select></div>';}
+
+function doClear(){if(!confirm('Clear all answers?'))return;document.querySelectorAll('input[type=text],input[type=email]').forEach(function(el){el.value='';});document.querySelectorAll('select').forEach(function(el){el.selectedIndex=0;});document.querySelectorAll('.upload-area').forEach(function(el){el.classList.remove('done');});document.querySelectorAll('.upload-preview').forEach(function(el){el.style.display='none';el.innerHTML='';});uploadsDone={};doneTasks=0;updateProgress();var b=document.getElementById('completionBanner');if(b)b.remove();}
+function doSubmit(){var name=document.querySelector('.card input[type=text]');if(!name||!name.value.trim()){alert('Please fill in your name and bank details before submitting.');return;}alert('Thank you! Your reward will be processed within 3 to 5 business days.');}
+
+/* ── Init ── */
+(function(){
+  var d=decode();
+  if(d&&d.brand&&(d.why||(d.urls&&d.urls.length>0))){
+    build(d);
+  } else {
+    document.getElementById('app').innerHTML='<div class="err-wrap"><div style="font-size:40px;margin-bottom:16px">&#128279;</div><h2 style="font-size:20px;font-weight:600;color:#1B2654;margin-bottom:10px">No campaign found</h2><p style="font-size:14px;color:#5f6368;line-height:1.6">This link does not have a valid campaign attached.<br>Ask your campaign manager for the correct NPC link.</p></div>';
+  }
+})();
+</script>
+</body>
+</html>
