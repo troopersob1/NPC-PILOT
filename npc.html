@@ -58,7 +58,7 @@ textarea.npc-input:focus{border:2px solid #1B2654}
 .upload-area-icon{font-size:28px;margin-bottom:4px}
 .upload-area-text{font-size:13px;color:#5f6368;font-weight:500}
 .upload-area-sub{font-size:11px;color:#9aa0a6;margin-top:2px}
-.upload-area input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.upload-area input[type=file]{display:none}
 .upload-preview{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7}
 .upload-preview img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #ccc;flex-shrink:0}
 .upload-preview-info{flex:1;min-width:0}
@@ -308,10 +308,16 @@ function genBox(idx,type,langs,platLabel){
 
 function taskUpload(label,reward,type,platIdx){
   var uid='u_'+platIdx+'_'+type;
-  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><div class="upload-area" id="'+uid+'_area"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div><input type="file" accept=".jpg,.jpeg,.png,.heic,.webp"  onchange="handleUpload(this,\''+uid+'\',\''+type+'\')"/></div><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
+  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><div class="upload-area" id="'+uid+'_area" onclick="triggerUpload(\''+uid+'\',\''+type+'\')"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div></div><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
 }
 
-function handleUpload(input,uid,type){if(input.files&&input.files[0])processFile(input.files[0],uid,type);}
+function triggerUpload(uid,type){
+  var input=document.createElement('input');
+  input.type='file';
+  input.accept='.jpg,.jpeg,.png,.heic,.webp';
+  input.onchange=function(){if(input.files&&input.files[0])processFile(input.files[0],uid,type);};
+  input.click();
+}
 function processFile(file,uid,type){
   var reader=new FileReader();
   reader.onload=function(e){
