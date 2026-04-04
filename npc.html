@@ -53,7 +53,7 @@ textarea.npc-input:focus{border:2px solid #1B2654}
 .task-section{margin-top:8px}
 .task-label{font-size:13px;font-weight:600;color:#202124;margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .task-rw{background:#fff3e8;border:1px solid #F5812A;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;color:#F5812A;white-space:nowrap}
-.upload-area{border:2px dashed #c5cae9;border-radius:10px;padding:16px 14px;background:#fafafa;text-align:center;cursor:pointer;position:relative;margin-top:6px;transition:all .2s}
+.upload-area{display:block;border:2px dashed #c5cae9;border-radius:10px;padding:16px 14px;background:#fafafa;text-align:center;cursor:pointer;margin-top:6px;transition:all .2s}
 .upload-area.done{border-color:#34A853;background:#f0fff4;border-style:solid}
 .upload-area-icon{font-size:28px;margin-bottom:4px}
 .upload-area-text{font-size:13px;color:#5f6368;font-weight:500}
@@ -105,7 +105,7 @@ textarea.npc-input:focus{border:2px solid #1B2654}
 .link-preview{display:none;position:absolute;z-index:100;bottom:calc(100% + 8px);left:0;width:320px;background:#fff;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.18);border:1px solid #e0e0e0;overflow:hidden}
 .link-preview.show{display:block;animation:lpIn .2s ease}
 @keyframes lpIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.link-preview iframe{width:100%;height:200px;border:none;pointer-events:none}
+.link-preview-bar{height:4px;background:linear-gradient(90deg,#1B2654,#F5812A);border-radius:4px 4px 0 0}
 .link-preview-fallback{padding:14px;display:flex;align-items:center;gap:10px}
 .link-preview-favicon{width:28px;height:28px;border-radius:6px;background:#f0f4f9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .link-preview-favicon img{width:20px;height:20px}
@@ -321,28 +321,10 @@ function genBox(idx,type,langs,platLabel){
 
 function taskUpload(label,reward,type,platIdx){
   var uid='u_'+platIdx+'_'+type;
-  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><div class="upload-area" id="'+uid+'_area" onclick="triggerUpload(\''+uid+'\',\''+type+'\')"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div></div><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
+  return '<div class="task-section"><div class="task-label">'+label+' <span class="task-rw">'+rp(reward)+'</span></div><label class="upload-area" id="'+uid+'_area" for="file_'+uid+'"><div class="upload-area-icon">&#128247;</div><div class="upload-area-text">Tap to upload screenshot</div><div class="upload-area-sub">JPG \u00B7 PNG \u00B7 HEIC</div><input type="file" id="file_'+uid+'" onchange="handleFile(this,\''+uid+'\',\''+type+'\')"/></label><div class="upload-preview" id="'+uid+'_prev" style="display:none"></div></div>';
 }
 
-var _fileInput=null;
-var _fileUid='';
-var _fileType='';
-function triggerUpload(uid,type){
-  _fileUid=uid;
-  _fileType=type;
-  if(!_fileInput){
-    _fileInput=document.createElement('input');
-    _fileInput.type='file';
-    // No accept filter — Chrome on Mac freezes when filtering file types
-    _fileInput.style.cssText='position:fixed;top:-9999px;left:-9999px;';
-    document.body.appendChild(_fileInput);
-    _fileInput.addEventListener('change',function(){
-      if(_fileInput.files&&_fileInput.files[0])processFile(_fileInput.files[0],_fileUid,_fileType);
-      _fileInput.value='';
-    });
-  }
-  _fileInput.click();
-}
+function handleFile(input,uid,type){if(input.files&&input.files[0])processFile(input.files[0],uid,type);}
 function processFile(file,uid,type){
   var reader=new FileReader();
   reader.onload=function(e){
@@ -544,7 +526,7 @@ function showLinkPreview(link){
   var favicon='https://www.google.com/s2/favicons?domain='+hostname+'&sz=32';
   var el=document.createElement('div');
   el.className='link-preview show';
-  el.innerHTML='<iframe src="'+esc(url)+'" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>'
+  el.innerHTML='<div class="link-preview-bar"></div>'
     +'<div class="link-preview-fallback">'
     +'<div class="link-preview-favicon"><img src="'+favicon+'" onerror="this.style.display=\'none\'"/></div>'
     +'<div class="link-preview-info"><div class="link-preview-domain">'+esc(hostname)+'</div>'

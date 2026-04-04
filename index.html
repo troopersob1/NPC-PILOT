@@ -105,7 +105,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 .link-preview{display:none;position:absolute;z-index:100;bottom:calc(100% + 8px);left:0;width:320px;background:#1a1a1a;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.4);border:1px solid var(--b2);overflow:hidden}
 .link-preview.show{display:block;animation:lpIn .2s ease}
 @keyframes lpIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.link-preview iframe{width:100%;height:200px;border:none;pointer-events:none;background:#111}
+.link-preview-bar{height:4px;background:linear-gradient(90deg,var(--acc),#00cc6a);border-radius:4px 4px 0 0}
 .link-preview-fallback{padding:12px;display:flex;align-items:center;gap:10px}
 .link-preview-favicon{width:28px;height:28px;border-radius:6px;background:var(--card);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .link-preview-favicon img{width:20px;height:20px}
@@ -388,7 +388,7 @@ document.addEventListener('mouseover',function(e){
     var favicon='https://www.google.com/s2/favicons?domain='+hostname+'&sz=32';
     var el=document.createElement('div');
     el.className='link-preview show';
-    el.innerHTML='<iframe src="'+esc(url)+'" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe><div class="link-preview-fallback"><div class="link-preview-favicon"><img src="'+favicon+'" onerror="this.style.display=\'none\'"/></div><div class="link-preview-info"><div class="link-preview-domain">'+esc(hostname)+'</div><div class="link-preview-url">'+esc(url)+'</div><div class="link-preview-open">Click to open \u2192</div></div></div>';
+    el.innerHTML='<div class="link-preview-bar"></div><div class="link-preview-fallback"><div class="link-preview-favicon"><img src="'+favicon+'" onerror="this.style.display=\'none\'"/></div><div class="link-preview-info"><div class="link-preview-domain">'+esc(hostname)+'</div><div class="link-preview-url">'+esc(url)+'</div><div class="link-preview-open">Click to open \u2192</div></div></div>';
     el.addEventListener('mouseover',function(){clearTimeout(_previewTimer);});
     el.addEventListener('mouseout',function(){_previewTimer=setTimeout(function(){if(_previewEl){_previewEl.remove();_previewEl=null;}},300);});
     link.appendChild(el);_previewEl=el;
