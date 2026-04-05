@@ -540,9 +540,22 @@ function doSubmit(){
   status.textContent='Uploading screenshots and submitting your claim...';
 
   var screenshots=[];
+  var taskMap=[];
+  var t=C.t||{},r=C.r||{},urls=C.urls||[],fUrls=C.followUrls||[];
+
+  // Build taskMap (mirrors the progress pills) so backend knows column structure
+  urls.forEach(function(p,i){
+    if(t.likes>0)taskMap.push({uid:'u_'+i+'_like',label:p.label+' - Like',rate:r.like||0});
+    if(t.shares>0)taskMap.push({uid:'u_'+i+'_share',label:p.label+' - Share',rate:r.share||0});
+    if(t.comments>0)taskMap.push({uid:'u_'+i+'_comment',label:p.label+' - Comment',rate:r.comment||0});
+  });
+  fUrls.forEach(function(u,fi){
+    if(t.follows>0)taskMap.push({uid:'u_follow_'+fi,label:'Follow - '+dom(u),rate:r.follow||0});
+  });
+
   Object.keys(uploadFiles).forEach(function(uid){
     var f=uploadFiles[uid];
-    screenshots.push({name:f.name,type:f.type,data:f.data,folder:f.folder||''});
+    screenshots.push({uid:uid,name:f.name,type:f.type,data:f.data,folder:f.folder||''});
   });
 
   var payload={
@@ -556,6 +569,7 @@ function doSubmit(){
     email:email.value.trim(),
     doneTasks:doneTasks,
     totalTasks:totalTasks,
+    taskMap:taskMap,
     screenshots:screenshots
   };
 
