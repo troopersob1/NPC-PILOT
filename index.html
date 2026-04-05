@@ -390,9 +390,9 @@ function copyLink(){var u=(document.getElementById('npcLink')||{}).textContent||
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);}
 function loadDashboard(){
   if(!window._scriptUrl)return;
-  var url=window._scriptUrl+'?action=submissions&campaign='+encodeURIComponent(window._campaign||'');
-  // Also fetch summary
-  var sumUrl=window._scriptUrl+'?action=summary&campaign='+encodeURIComponent(window._campaign||'');
+  var campaign=window._campaign||'';
+  // Fetch summary stats
+  var sumUrl=window._scriptUrl+'?action=summary&campaign='+encodeURIComponent(campaign);
   fetch(sumUrl).then(function(r){return r.json();}).then(function(d){
     var el=function(id){return document.getElementById(id);};
     if(el('ds_total'))el('ds_total').textContent=d.total||0;
@@ -400,21 +400,75 @@ function loadDashboard(){
     if(el('ds_pending'))el('ds_pending').textContent=d.pending||0;
     if(el('ds_screens'))el('ds_screens').textContent=d.screenshots||0;
   }).catch(function(){});
-  fetch(url).then(function(r){return r.json();}).then(function(d){
-    var rows=d.rows||[];
+  // Fetch per-task campaign submissions
+  var csUrl=window._scriptUrl+'?action=campaignSubmissions&campaign='+encodeURIComponent(campaign);
+  fetch(csUrl).then(function(r){return r.json();}).then(function(d){
+    var rows=d.rows||[],headers=d.headers||[];
     var container=document.getElementById('dashRows');
     if(!container)return;
     if(rows.length===0){container.innerHTML='<div class="dash-empty">No submissions yet. Share your NPC link to get started.</div>';return;}
-    var html='';
-    rows.forEach(function(r){
-      var isDone=r.done>=r.total&&r.total>0;
-      html+='<div class="dash-row"><span>'+esc(r.name||'Anonymous')+'</span><span style="font-size:11px;color:var(--t2);">'+esc(r.timestamp||'')+'</span><span>'+r.done+'/'+r.total+'</span><span><span class="dash-status '+(isDone?'done':'pending')+'">'+(isDone?'Done':'In Progress')+'</span></span></div>';
+    // Identify task columns (anything between Email and Pay Amount)
+    var taskCols=[];
+    var inTasks=false;
+    for(var h=0;h<headers.length;h++){
+      if(headers[h]==='Email'){inTasks=true;continue;}
+      if(headers[h]==='Pay Amount'){inTasks=false;continue;}
+      if(inTasks)taskCols.push(headers[h]);
+    }
+    // Build table header
+    var thHtml='<div style="display:grid;grid-template-columns:140px 90px'+(' 60px'.repeat(taskCols.length))+' 70px 90px;padding:8px 10px;border-bottom:1px solid var(--b1);font-size:9px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;overflow-x:auto">';
+    thHtml+='<span>NPC</span><span>Time</span>';
+    taskCols.forEach(function(tc){
+      // Extract short label from "[RM0.50] Instagram - Like" → "IG Like"
+      var short=tc.replace(/\[RM[\d.]+\]\s*/,'').replace('Instagram','IG').replace('Facebook','FB').replace('LinkedIn','LI').replace('YouTube','YT').replace('X/Twitter','X').replace('Follow - ','F:');
+      thHtml+='<span title="'+esc(tc)+'" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(short)+'</span>';
     });
-    container.innerHTML=html;
-  }).catch(function(){
+    thHtml+='<span>Pay</span><span>Action</span></div>';
+    // Build rows
+    var rowsHtml='';
+    rows.forEach(function(r,ri){
+      var status=r['Status']||'Pending Review';
+      var statusCls=status==='Approved'?'done':status==='Rejected'?'rejected':'pending';
+      rowsHtml+='<div style="display:grid;grid-template-columns:140px 90px'+(' 60px'.repeat(taskCols.length))+' 70px 90px;padding:7px 10px;border-bottom:1px solid var(--b1);font-size:11px;color:var(--tx);align-items:center">';
+      rowsHtml+='<span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(r['NPC Name']||'')+'\nIC: '+esc(r['IC Number']||'')+'\nPhone: '+esc(r['Phone']||'')+'">'+esc(r['NPC Name']||'Anon')+'</span>';
+      rowsHtml+='<span style="font-size:10px;color:var(--t2)">'+esc(r['Timestamp']||'')+'</span>';
+      // Task columns — show proof link or empty
+      taskCols.forEach(function(tc){
+        var val=r[tc]||'';
+        if(val&&val.indexOf('http')===0){
+          rowsHtml+='<span><a href="'+esc(val)+'" target="_blank" style="color:var(--acc);font-size:10px;text-decoration:none" title="View proof">&#9989;</a></span>';
+        } else {
+          rowsHtml+='<span style="color:var(--t3)">&#8212;</span>';
+        }
+      });
+      rowsHtml+='<span style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--acc)">'+rm(parseFloat(r['Pay Amount'])||0)+'</span>';
+      // Action buttons
+      if(status==='Approved'){
+        rowsHtml+='<span><span class="dash-status done">Approved</span></span>';
+      } else if(status==='Rejected'){
+        rowsHtml+='<span><span class="dash-status" style="background:rgba(255,60,60,.12);color:#ff5c5c">Rejected</span></span>';
+      } else {
+        rowsHtml+='<span style="display:flex;gap:4px">';
+        rowsHtml+='<button onclick="approveNPC(\''+esc(r['NPC Name']||'')+'\',\''+esc(r['IC Number']||'')+'\')" style="padding:3px 8px;font-size:9px;font-weight:700;border-radius:4px;border:1px solid rgba(0,255,135,.3);background:rgba(0,255,135,.1);color:var(--acc);cursor:pointer;font-family:inherit">&#10003;</button>';
+        rowsHtml+='<button onclick="rejectNPC(\''+esc(r['NPC Name']||'')+'\',\''+esc(r['IC Number']||'')+'\')" style="padding:3px 8px;font-size:9px;font-weight:700;border-radius:4px;border:1px solid rgba(255,60,60,.3);background:rgba(255,60,60,.1);color:#ff5c5c;cursor:pointer;font-family:inherit">&#10007;</button>';
+        rowsHtml+='</span>';
+      }
+      rowsHtml+='</div>';
+    });
+    container.innerHTML=thHtml+rowsHtml;
+  }).catch(function(err){
     var container=document.getElementById('dashRows');
     if(container)container.innerHTML='<div class="dash-empty">Could not load dashboard. Check your Apps Script URL.</div>';
   });
+}
+function approveNPC(name,ic){updateNPCStatus(name,ic,'Approved');}
+function rejectNPC(name,ic){if(!confirm('Reject submission from '+name+'?'))return;updateNPCStatus(name,ic,'Rejected');}
+function updateNPCStatus(name,ic,status){
+  if(!window._scriptUrl)return;
+  var payload={_action:'updateStatus',campaign:window._campaign||'',npcName:name,ic:ic,status:status};
+  fetch(window._scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+  showToast(name+' '+status.toLowerCase());
+  setTimeout(loadDashboard,2000);
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 // Link preview on hover
