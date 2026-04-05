@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEEDER — Platform Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0a;--sur:#111;--card:#181818;--b1:#222;--b2:#2e2e2e;--acc:#00ff87;--tx:#ebebeb;--t2:#777;--t3:#444;--warn:#ffa000;--danger:#ff5c5c;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh;}
+header{padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--b1);position:sticky;top:0;background:rgba(10,10,10,.96);backdrop-filter:blur(10px);z-index:50;}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;}.logo em{color:var(--acc);font-style:normal;}
+.badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--warn);border:1px solid rgba(255,160,0,.25);padding:3px 9px;border-radius:20px;letter-spacing:1.5px;}
+.container{max-width:1200px;margin:0 auto;padding:20px;}
+/* SETUP */
+.setup-card{background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:20px;margin-bottom:20px;}
+.setup-card label{font-size:10px;font-weight:700;letter-spacing:1.2px;color:var(--t2);text-transform:uppercase;display:block;margin-bottom:6px;}
+.setup-card input{background:var(--sur);border:1px solid var(--b2);color:var(--tx);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;border-radius:8px;outline:none;width:100%;transition:border-color .15s;}
+.setup-card input:focus{border-color:var(--acc);}
+.setup-row{display:flex;gap:10px;align-items:flex-end;}
+.btn{padding:9px 18px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
+.btn-primary{background:var(--acc);color:#000;}.btn-primary:hover{background:#00e87b;}
+.btn-ghost{background:transparent;border:1px solid var(--b2);color:var(--t2);}.btn-ghost:hover{border-color:var(--tx);color:var(--tx);}
+.btn-warn{background:rgba(255,160,0,.15);border:1px solid rgba(255,160,0,.3);color:var(--warn);}.btn-warn:hover{background:rgba(255,160,0,.25);}
+.btn-danger{background:rgba(255,60,60,.15);border:1px solid rgba(255,60,60,.3);color:var(--danger);}.btn-danger:hover{background:rgba(255,60,60,.25);}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+.stat{background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:16px;text-align:center;}
+.stat-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--acc);}
+.stat-lbl{font-size:10px;color:var(--t2);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}
+/* SECTION */
+.sec{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--t2);text-transform:uppercase;margin:24px 0 12px;display:flex;align-items:center;gap:10px;}
+.sec::after{content:'';flex:1;height:1px;background:var(--b1);}
+/* CAMPAIGN SELECTOR */
+.camp-sel{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.camp-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--b2);background:var(--card);cursor:pointer;font-size:12px;color:var(--t2);transition:all .15s;font-family:'DM Sans',sans-serif;}
+.camp-pill:hover{border-color:var(--acc);color:var(--tx);}
+.camp-pill.on{border-color:var(--acc);background:rgba(0,255,135,.08);color:var(--acc);font-weight:600;}
+/* TABLE */
+.tbl-wrap{background:var(--card);border:1px solid var(--b2);border-radius:10px;overflow-x:auto;margin-bottom:20px;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{background:var(--sur);padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--b1);white-space:nowrap;position:sticky;top:0;}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--b1);white-space:nowrap;}
+.tbl tr:hover{background:rgba(0,255,135,.03);}
+.tbl .proof{color:var(--acc);text-decoration:none;font-size:10px;}.tbl .proof:hover{text-decoration:underline;}
+.tbl .empty{color:var(--t3);}
+.status-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.status-badge.approved{background:rgba(0,255,135,.12);color:var(--acc);}
+.status-badge.pending{background:rgba(255,160,0,.12);color:var(--warn);}
+.status-badge.rejected{background:rgba(255,60,60,.12);color:var(--danger);}
+/* ACTIONS */
+.act-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#000;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;opacity:0;transform:translateY(8px);transition:all .25s;z-index:999;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+/* LEDGER */
+.ledger{background:var(--sur);border:1px solid var(--b2);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+.ledger-row{display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--b1);font-size:13px;}
+.ledger-lbl{color:var(--t2);}.ledger-val{font-family:'DM Mono',monospace;color:var(--tx);}
+.ledger-tot{padding:14px 16px;background:rgba(0,255,135,.06);border-top:1px solid rgba(0,255,135,.15);display:flex;justify-content:space-between;align-items:center;}
+.ledger-tot .ledger-lbl{font-family:'Syne',sans-serif;font-weight:700;color:var(--tx);font-size:14px;}
+.ledger-tot .ledger-val{font-family:'Syne',sans-serif;font-weight:800;color:var(--acc);font-size:20px;}
+@media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr);}.setup-row{flex-direction:column;}.act-row{flex-direction:column;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SEED<em>ER</em> <span style="font-size:11px;color:var(--t2);font-weight:400;margin-left:6px;font-family:'DM Sans',sans-serif;">Admin</span></div>
+  <div class="badge">OPERATOR</div>
+</header>
+<div class="container">
+
+<div class="setup-card">
+  <div class="setup-row">
+    <div style="flex:1"><label>Apps Script URL</label><input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" /></div>
+    <button class="btn btn-primary" onclick="connectScript()">Connect</button>
+  </div>
+</div>
+
+<div id="mainContent" style="display:none">
+
+<div class="stats">
+  <div class="stat"><div class="stat-num" id="st_campaigns">-</div><div class="stat-lbl">Campaigns</div></div>
+  <div class="stat"><div class="stat-num" id="st_npcs">-</div><div class="stat-lbl">Total NPCs</div></div>
+  <div class="stat"><div class="stat-num" id="st_approved">-</div><div class="stat-lbl">Approved</div></div>
+  <div class="stat"><div class="stat-num" id="st_pending">-</div><div class="stat-lbl">Pending</div></div>
+  <div class="stat"><div class="stat-num" id="st_payout">RM 0</div><div class="stat-lbl">Total Payout</div></div>
+</div>
+
+<div class="sec">Campaigns</div>
+<div class="camp-sel" id="campPills"></div>
+
+<div class="sec">Submissions — <span id="campLabel">Select a campaign</span></div>
+<div class="act-row">
+  <button class="btn btn-primary" onclick="downloadPaymentFile()">Download Payment File (IBG)</button>
+  <button class="btn btn-ghost" onclick="downloadCSV()">Export CSV</button>
+  <button class="btn btn-ghost" onclick="refreshData()">Refresh</button>
+</div>
+
+<div class="tbl-wrap">
+  <table class="tbl" id="subTable">
+    <thead id="subThead"><tr><th>Select a campaign above</th></tr></thead>
+    <tbody id="subTbody"><tr><td style="color:var(--t3);padding:24px;">Select a campaign to view submissions</td></tr></tbody>
+  </table>
+</div>
+
+<div class="sec">Platform Ledger — <span id="ledgerLabel">All Campaigns</span></div>
+<div class="ledger" id="ledger">
+  <div class="ledger-row"><span class="ledger-lbl">Total NPC Payouts</span><span class="ledger-val" id="lg_payout">RM 0.00</span></div>
+  <div class="ledger-row"><span class="ledger-lbl">Service Fee (25%)</span><span class="ledger-val" id="lg_fee">RM 0.00</span></div>
+  <div class="ledger-row"><span class="ledger-lbl">SST 8% (on fee)</span><span class="ledger-val" id="lg_sst">RM 0.00</span></div>
+  <div class="ledger-tot"><span class="ledger-lbl">Net Revenue</span><span class="ledger-val" id="lg_net">RM 0.00</span></div>
+</div>
+
+</div><!-- mainContent -->
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var _scriptUrl='';
+var _campaigns=[];
+var _activeCampaign='';
+var _currentData={headers:[],rows:[]};
+
+function connectScript(){
+  var url=document.getElementById('scriptUrl').value.trim();
+  if(!url){showToast('Enter your Apps Script URL');return;}
+  _scriptUrl=url;
+  localStorage.setItem('seeder_admin_script',url);
+  document.getElementById('mainContent').style.display='block';
+  loadCampaigns();
+}
+
+function loadCampaigns(){
+  fetch(_scriptUrl+'?action=listCampaigns')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      _campaigns=d.campaigns||[];
+      // Dedupe by title (keep latest)
+      var seen={};
+      var unique=[];
+      for(var i=_campaigns.length-1;i>=0;i--){
+        if(!seen[_campaigns[i].title]){
+          seen[_campaigns[i].title]=true;
+          unique.unshift(_campaigns[i]);
+        }
+      }
+      _campaigns=unique;
+      document.getElementById('st_campaigns').textContent=_campaigns.length;
+      renderCampPills();
+      loadAllStats();
+    })
+    .catch(function(){showToast('Failed to connect. Check your URL.');});
+}
+
+function renderCampPills(){
+  var html='';
+  _campaigns.forEach(function(c){
+    html+='<button class="camp-pill'+(c.title===_activeCampaign?' on':'')+'" onclick="selectCampaign(\''+esc(c.title)+'\')">'+esc(c.brand)+' — '+esc(c.title)+'</button>';
+  });
+  document.getElementById('campPills').innerHTML=html;
+}
+
+function selectCampaign(title){
+  _activeCampaign=title;
+  renderCampPills();
+  document.getElementById('campLabel').textContent=title;
+  document.getElementById('ledgerLabel').textContent=title;
+  loadCampaignData(title);
+}
+
+function loadCampaignData(campaign){
+  fetch(_scriptUrl+'?action=campaignSubmissions&campaign='+encodeURIComponent(campaign))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      _currentData=d;
+      renderTable(d.headers||[],d.rows||[]);
+      updateLedger(d.rows||[]);
+      updateStats(d.rows||[]);
+    })
+    .catch(function(){showToast('Failed to load campaign data');});
+}
+
+function renderTable(headers,rows){
+  // Build header
+  var thHtml='<tr>';
+  headers.forEach(function(h){
+    var short=h.replace(/\[RM[\d.]+\]\s*/,'').replace('Instagram','IG').replace('Facebook','FB').replace('LinkedIn','LI').replace('YouTube','YT').replace('X/Twitter','X').replace('Follow - ','F:');
+    thHtml+='<th title="'+esc(h)+'">'+esc(short)+'</th>';
+  });
+  thHtml+='<th>Action</th></tr>';
+  document.getElementById('subThead').innerHTML=thHtml;
+
+  // Build rows
+  if(rows.length===0){
+    document.getElementById('subTbody').innerHTML='<tr><td colspan="'+(headers.length+1)+'" style="color:var(--t3);padding:24px;text-align:center">No submissions yet</td></tr>';
+    return;
+  }
+
+  var html='';
+  rows.forEach(function(r){
+    html+='<tr>';
+    headers.forEach(function(h){
+      var val=String(r[h]||'');
+      if(h==='Status'){
+        var cls=val==='Approved'?'approved':val==='Rejected'?'rejected':'pending';
+        html+='<td><span class="status-badge '+cls+'">'+esc(val)+'</span></td>';
+      } else if(val.indexOf('http')===0){
+        html+='<td><a class="proof" href="'+esc(val)+'" target="_blank">View Proof</a></td>';
+      } else if(h==='Pay Amount'){
+        html+='<td style="font-family:\'DM Mono\',monospace;color:var(--acc)">RM '+parseFloat(val||0).toFixed(2)+'</td>';
+      } else {
+        html+='<td>'+esc(val||'—')+'</td>';
+      }
+    });
+    // Action column
+    var status=r['Status']||'Pending Review';
+    if(status==='Pending Review'){
+      html+='<td><button class="btn btn-primary" style="padding:4px 10px;font-size:10px;margin-right:4px" onclick="doAction(\''+esc(r['NPC Name']||'')+'\',\''+esc(r['IC Number']||'')+'\',\'Approved\')">Approve</button>';
+      html+='<button class="btn btn-danger" style="padding:4px 10px;font-size:10px" onclick="doAction(\''+esc(r['NPC Name']||'')+'\',\''+esc(r['IC Number']||'')+'\',\'Rejected\')">Reject</button></td>';
+    } else {
+      html+='<td>—</td>';
+    }
+    html+='</tr>';
+  });
+  document.getElementById('subTbody').innerHTML=html;
+}
+
+function doAction(name,ic,status){
+  if(status==='Rejected'&&!confirm('Reject submission from '+name+'?'))return;
+  var payload={_action:'updateStatus',campaign:_activeCampaign,npcName:name,ic:ic,status:status};
+  fetch(_scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+  showToast(name+' '+status.toLowerCase());
+  setTimeout(function(){loadCampaignData(_activeCampaign);},2000);
+}
+
+function updateStats(rows){
+  var total=rows.length,approved=0,pending=0,totalPay=0;
+  rows.forEach(function(r){
+    var s=r['Status']||'Pending Review';
+    if(s==='Approved'){approved++;totalPay+=parseFloat(r['Pay Amount'])||0;}
+    else if(s!=='Rejected')pending++;
+  });
+  document.getElementById('st_npcs').textContent=total;
+  document.getElementById('st_approved').textContent=approved;
+  document.getElementById('st_pending').textContent=pending;
+  document.getElementById('st_payout').textContent='RM '+totalPay.toFixed(0);
+}
+
+function updateLedger(rows){
+  var totalPay=0;
+  rows.forEach(function(r){
+    if((r['Status']||'')==='Approved'){
+      totalPay+=parseFloat(r['Pay Amount'])||0;
+    }
+  });
+  var fee=totalPay*0.25;
+  var sst=fee*0.08;
+  var net=fee+sst;
+  document.getElementById('lg_payout').textContent='RM '+totalPay.toFixed(2);
+  document.getElementById('lg_fee').textContent='RM '+fee.toFixed(2);
+  document.getElementById('lg_sst').textContent='RM '+sst.toFixed(2);
+  document.getElementById('lg_net').textContent='RM '+net.toFixed(2);
+}
+
+function loadAllStats(){
+  fetch(_scriptUrl+'?action=submissions')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var rows=d.rows||[];
+      var totalPay=0;
+      rows.forEach(function(r){totalPay+=parseFloat(r.payAmount)||0;});
+      document.getElementById('st_npcs').textContent=rows.length;
+      document.getElementById('st_payout').textContent='RM '+totalPay.toFixed(0);
+    }).catch(function(){});
+}
+
+// ── Download IBG Payment File ──
+function downloadPaymentFile(){
+  if(!_activeCampaign){showToast('Select a campaign first');return;}
+  fetch(_scriptUrl+'?action=paymentData&campaign='+encodeURIComponent(_activeCampaign))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var rows=d.rows||[];
+      if(rows.length===0){showToast('No approved submissions to pay');return;}
+      // Build IBG text file
+      // Header: Beneficiary Name | Beneficiary ID | BNM Code | Account Number | Payment Amount | Reference Number | Email | Payment Ref Number | Payment Description | Payment Detail Number | Payment Detail Date | Payment Description | Payment Detail Amount
+      var lines=[];
+      lines.push('*Beneficiary Name\t*BNM Code\t*Account Number\t*Payment Amount\tReference Number\t*Beneficiary Email Address\t*Payment Reference Number\tPayment Description\t*Payment Detail Number\t*Payment Detail Date (DD/MM/YYYY)\t*Payment Description\t*Payment Detail Amount');
+      rows.forEach(function(r){
+        lines.push([
+          r.beneficiaryName,
+          r.bnmCode,
+          r.accountNumber,
+          r.paymentAmount,
+          r.referenceNumber,
+          r.email,
+          r.paymentRefNumber,
+          r.paymentDescription,
+          r.paymentDetailNumber,
+          r.paymentDetailDate,
+          r.paymentDetailDesc,
+          r.paymentDetailAmount
+        ].join('\t'));
+      });
+      var content=lines.join('\n');
+      var blob=new Blob([content],{type:'text/tab-separated-values'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=_activeCampaign.replace(/\s/g,'_')+'_IBG_Payment_'+new Date().toISOString().slice(0,10)+'.tsv';
+      a.click();
+      showToast('Payment file downloaded — '+rows.length+' records');
+    })
+    .catch(function(){showToast('Failed to generate payment file');});
+}
+
+// ── Download CSV ──
+function downloadCSV(){
+  if(!_currentData.rows||_currentData.rows.length===0){showToast('No data to export');return;}
+  var headers=_currentData.headers||[];
+  var lines=[headers.join(',')];
+  _currentData.rows.forEach(function(r){
+    var vals=headers.map(function(h){
+      var v=String(r[h]||'').replace(/"/g,'""');
+      return '"'+v+'"';
+    });
+    lines.push(vals.join(','));
+  });
+  var blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(_activeCampaign||'all')+'_submissions_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('CSV exported');
+}
+
+function refreshData(){
+  if(_activeCampaign)loadCampaignData(_activeCampaign);
+  else loadCampaigns();
+}
+
+function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+
+// Auto-restore saved URL
+(function(){
+  var saved=localStorage.getItem('seeder_admin_script');
+  if(saved){
+    document.getElementById('scriptUrl').value=saved;
+    _scriptUrl=saved;
+    document.getElementById('mainContent').style.display='block';
+    loadCampaigns();
+  }
+})();
+</script>
+</body>
+</html>
