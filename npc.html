@@ -542,7 +542,7 @@ function resizeScreenshots(screenshots, cb){
       var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
       var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
       var dataUrl=canvas.toDataURL('image/jpeg',0.7);
-      results[idx]={name:s.name||('screenshot_'+(idx+1)+'.jpg'),type:'image/jpeg',data:dataUrl};
+      results[idx]={uid:s.uid||'',name:s.name||('screenshot_'+(idx+1)+'.jpg'),type:'image/jpeg',data:dataUrl,folder:s.folder||''};
       pending--;if(pending<=0)cb(results);
     };
     img.onerror=function(){
