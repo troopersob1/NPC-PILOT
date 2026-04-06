@@ -275,23 +275,53 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 <script>
 var PLATS={tiktok:{icon:'TikTok',label:'TikTok',ph:'https://www.tiktok.com/@handle/video/...'},instagram:{icon:'Instagram',label:'Instagram',ph:'https://www.instagram.com/p/...'},facebook:{icon:'Facebook',label:'Facebook',ph:'https://www.facebook.com/...'},twitter:{icon:'X/Twitter',label:'X / Twitter',ph:'https://x.com/handle/status/...'},linkedin:{icon:'LinkedIn',label:'LinkedIn',ph:'https://www.linkedin.com/posts/...'},youtube:{icon:'YouTube',label:'YouTube',ph:'https://www.youtube.com/watch?v=...'},xiaohongshu:{icon:'Xiaohongshu',label:'Xiaohongshu',ph:'https://www.xiaohongshu.com/...'}};
 var LANG_OPTS=[{k:'en',l:'English'},{k:'my',l:'Bahasa Malaysia'},{k:'zh',l:'Mandarin'},{k:'mgl',l:'Manglish'}];
-var active=[],platLangs={},toneVals={advocacy:40,neutral:30,short:20,discussion:10};
-function togglePlat(k){var pill=document.getElementById('pp_'+k),idx=active.indexOf(k);if(idx>=0){active.splice(idx,1);pill.classList.remove('on');delete platLangs[k];}else{active.push(k);pill.classList.add('on');platLangs[k]=['en','my','mgl'];}renderPubs();}
+var active=[],platLangs={},platUrls={},toneVals={advocacy:40,neutral:30,short:20,discussion:10};
+function togglePlat(k){var pill=document.getElementById('pp_'+k),idx=active.indexOf(k);if(idx>=0){savePlatUrls();active.splice(idx,1);pill.classList.remove('on');delete platLangs[k];delete platUrls[k];}else{active.push(k);pill.classList.add('on');platLangs[k]=['en','my','mgl'];platUrls[k]=[''];}renderPubs();}
 function toggleLang(k,lk,el){var a=platLangs[k]||[],idx=a.indexOf(lk);if(idx>=0){if(a.length===1)return;a.splice(idx,1);el.classList.remove('on');}else{a.push(lk);el.classList.add('on');}platLangs[k]=a;}
+// Save current input values before re-rendering
+function savePlatUrls(){
+  active.forEach(function(k){
+    var inputs=document.querySelectorAll('.pub-url-'+k);
+    if(inputs.length>0){
+      platUrls[k]=[];
+      inputs.forEach(function(el){platUrls[k].push(el.value);});
+    }
+  });
+}
+function addPlatUrl(k){
+  savePlatUrls();
+  platUrls[k]=platUrls[k]||[''];
+  platUrls[k].push('');
+  renderPubs();
+}
+function removePlatUrl(k,idx){
+  savePlatUrls();
+  if(platUrls[k]&&platUrls[k].length>1){platUrls[k].splice(idx,1);}
+  renderPubs();
+}
 function renderPubs(){
   var c=document.getElementById('pubBlocks');
   if(!c)return;
   var html='';
   active.forEach(function(k){
     var p=PLATS[k];
+    var urls=platUrls[k]||[''];
     var lbHtml='';
     LANG_OPTS.forEach(function(l){
       var on=(platLangs[k]||['en']).indexOf(l.k)>=0;
       lbHtml+='<button class="lb'+(on?' on':'')+'" data-plat="'+k+'" data-lang="'+l.k+'" onclick="handleLangBtn(this)">'+l.l+'</button>';
     });
     html+='<div class="pub">'
-      +'<div class="pub-head"><span class="pub-icon">&#128279;</span><span class="pub-name">'+p.label+' Post URL</span></div>'
-      +'<input type="url" id="url_'+k+'" placeholder="'+p.ph+'"/>'
+      +'<div class="pub-head"><span class="pub-icon">&#128279;</span><span class="pub-name">'+p.label+' Post URLs</span></div>';
+    urls.forEach(function(val,i){
+      html+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
+        +'<input type="url" class="pub-url-'+k+'" value="'+(val||'').replace(/"/g,'&quot;')+'" placeholder="'+p.ph+'"/>';
+      if(urls.length>1){
+        html+='<button class="btn-x" onclick="removePlatUrl(\''+k+'\','+i+')" style="flex-shrink:0">x</button>';
+      }
+      html+='</div>';
+    });
+    html+='<button class="btn-add" onclick="addPlatUrl(\''+k+'\')" style="margin-bottom:8px">+ Add another '+p.label+' link</button>'
       +'<div class="lang-lbl">Comment language for NPCs:</div>'
       +'<div class="lps">'+lbHtml+'</div>'
       +'</div>';
@@ -323,7 +353,14 @@ function getSamples(){var on=document.querySelector('.stab.on');if(!on)return'';
 function encode(payload){var json=JSON.stringify(payload);var bytes=new TextEncoder().encode(json);var bin='';bytes.forEach(function(b){bin+=String.fromCharCode(b);});return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');}
 function generate(){
   var brand=gv('brandName')||'Brand',title=gv('campaignTitle')||'Campaign',why=gv('whyEndorse');
-  var urls=active.map(function(k){var el=document.getElementById('url_'+k);return{key:k,label:PLATS[k].label,icon:PLATS[k].icon,url:el?el.value.trim():'',langs:platLangs[k]||['en']};}).filter(function(p){return p.url.length>0;});
+  savePlatUrls();
+  var urls=[];
+  active.forEach(function(k){
+    var pUrls=platUrls[k]||[''];
+    pUrls.forEach(function(u){
+      if(u&&u.trim())urls.push({key:k,label:PLATS[k].label,icon:PLATS[k].icon,url:u.trim(),langs:platLangs[k]||['en']});
+    });
+  });
   var followUrls=[];document.querySelectorAll('#followList .fl-row input').forEach(function(el){if(el.value.trim())followUrls.push(el.value.trim());});
   if(!why&&urls.length===0){showToast('Fill in the endorsement reason or add at least one platform URL');return;}
   var L=nv('tLikes',0),C=nv('tComments',0),S=nv('tShares',0),F=nv('tFollows',0);
