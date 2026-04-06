@@ -20,6 +20,11 @@ function doPost(e) {
     var raw = (e.parameter && e.parameter.data) ? e.parameter.data : e.postData.contents;
     var data = JSON.parse(raw);
 
+    // Route: AI proxy via POST (handles large prompts)
+    if (data._action === 'anthropicProxy') {
+      return doAnthropicProxy(JSON.stringify(data.payload || data));
+    }
+
     // Route: save campaign
     if (data._action === 'saveCampaign') {
       return saveCampaign(data);

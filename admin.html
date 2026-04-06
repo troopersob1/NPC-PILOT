@@ -75,12 +75,7 @@ header{padding:0 20px;height:52px;display:flex;align-items:center;justify-conten
 </header>
 <div class="container">
 
-<div class="setup-card">
-  <div class="setup-row">
-    <div style="flex:1"><label>Apps Script URL</label><input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" /></div>
-    <button class="btn btn-primary" onclick="connectScript()">Connect</button>
-  </div>
-</div>
+<input type="hidden" id="scriptUrl" value="https://script.google.com/macros/s/AKfycbyLBY4iwwxJ1m3qWn4gRlrr7hjfsH3Usbk5mkk7BP8X71ZePz5y9e7vFBXJlKcKhzHb/exec" />
 
 <div id="mainContent" style="display:none">
 
@@ -464,12 +459,11 @@ function refreshData(){
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
 
-// Auto-restore saved URL
+// Auto-connect on load
 (function(){
-  var saved=localStorage.getItem('seeder_admin_script');
-  if(saved){
-    document.getElementById('scriptUrl').value=saved;
-    _scriptUrl=saved;
+  var url=document.getElementById('scriptUrl').value.trim();
+  if(url){
+    _scriptUrl=url;
     document.getElementById('mainContent').style.display='block';
     loadCampaigns();
   }

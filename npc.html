@@ -169,7 +169,23 @@ async function callAI(messages, maxTokens) {
   if (!scriptUrl) return null;
   var body = { model: 'claude-sonnet-4-20250514', max_tokens: maxTokens || 300, messages: messages };
   try {
-    var res = await fetch(scriptUrl + '?action=anthropicProxy&payload=' + encodeURIComponent(JSON.stringify(body)));
+    // Try GET first (works for short payloads, GAS returns CORS-enabled JSON)
+    var payloadStr = JSON.stringify(body);
+    var url = scriptUrl + '?action=anthropicProxy&payload=' + encodeURIComponent(payloadStr);
+    if (url.length > 8000) {
+      // Payload too large for GET — use POST redirect trick
+      // GAS POST redirects to GET on success, so we follow redirects
+      var res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain'},
+        body: JSON.stringify({_action:'anthropicProxy', payload: body}),
+        redirect: 'follow'
+      });
+      var j = await res.json();
+      if (j.error) { console.error('AI error:', j.error); return null; }
+      return (j.content && j.content[0] && j.content[0].text) ? j.content[0].text.trim() : null;
+    }
+    var res = await fetch(url);
     var j = await res.json();
     if (j.error) { console.error('AI error:', j.error); return null; }
     return (j.content && j.content[0] && j.content[0].text) ? j.content[0].text.trim() : null;

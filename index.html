@@ -251,7 +251,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
     </div>
   </div>
   <div class="sh">Google Apps Script</div>
-  <div class="field"><label class="lbl">Apps Script Web App URL <span class="lbl-n">— for NPC submissions &amp; dashboard</span></label><input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:12px;"/></div>
+  <input type="hidden" id="scriptUrl" value="https://script.google.com/macros/s/AKfycbyLBY4iwwxJ1m3qWn4gRlrr7hjfsH3Usbk5mkk7BP8X71ZePz5y9e7vFBXJlKcKhzHb/exec" />
   <div class="sh">Cost Estimate</div>
   <div class="calc">
     <div class="ch"><span class="ch-t">Invoice Preview</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3)">live</span></div>
@@ -268,7 +268,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
   <button class="btn-gen" onclick="generate()">Generate NPC Task Form</button>
 </div>
 <div class="pp" id="preview">
-  <div class="empty"><div class="empty-icon">&#9889;</div><div class="empty-title">Campaign preview here</div><div class="empty-sub">Fill in details, select platforms, configure voice settings, then generate.</div></div>
+  <div id="campHistory"></div>
+  <div class="empty" id="emptyState"><div class="empty-icon">&#9889;</div><div class="empty-title">Campaign preview here</div><div class="empty-sub">Fill in details, select platforms, configure voice settings, then generate.</div></div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -457,12 +458,16 @@ function loadDashboard(){
       if(inTasks)taskCols.push(headers[h]);
     }
     // Build table header
-    var thHtml='<div style="display:grid;grid-template-columns:140px 90px'+(' 60px'.repeat(taskCols.length))+' 70px 90px;padding:8px 10px;border-bottom:1px solid var(--b1);font-size:9px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;overflow-x:auto">';
+    var thHtml='<div style="display:grid;grid-template-columns:140px 90px'+(' 75px'.repeat(taskCols.length))+' 70px 90px;padding:8px 10px;border-bottom:1px solid var(--b1);font-size:9px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;overflow-x:auto">';
     thHtml+='<span>NPC</span><span>Time</span>';
     taskCols.forEach(function(tc){
-      // Extract short label from "[RM0.50] Instagram - Like" → "IG Like"
-      var short=tc.replace(/\[RM[\d.]+\]\s*/,'').replace('Instagram','IG').replace('Facebook','FB').replace('LinkedIn','LI').replace('YouTube','YT').replace('X/Twitter','X').replace('Follow - ','F:');
-      thHtml+='<span title="'+esc(tc)+'" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(short)+'</span>';
+      // "[RM 0.50] Instagram - Like" → "Like" (platform shown via emoji in row)
+      var taskName=tc.replace(/\[RM[\d.]+\]\s*/,'');
+      var parts=taskName.split(' - ');
+      var plat=(parts[0]||'').replace('Instagram','IG').replace('Facebook','FB').replace('LinkedIn','LI').replace('YouTube','YT').replace('X/Twitter','X');
+      var action=parts[1]||parts[0]||'';
+      var short=plat+' '+action;
+      thHtml+='<span title="'+esc(tc)+'" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8px">'+esc(short)+'</span>';
     });
     thHtml+='<span>Pay</span><span>Action</span></div>';
     // Build rows
@@ -470,7 +475,7 @@ function loadDashboard(){
     rows.forEach(function(r,ri){
       var status=r['Status']||'Pending Review';
       var statusCls=status==='Approved'?'done':status==='Rejected'?'rejected':'pending';
-      rowsHtml+='<div style="display:grid;grid-template-columns:140px 90px'+(' 60px'.repeat(taskCols.length))+' 70px 90px;padding:7px 10px;border-bottom:1px solid var(--b1);font-size:11px;color:var(--tx);align-items:center">';
+      rowsHtml+='<div style="display:grid;grid-template-columns:140px 90px'+(' 75px'.repeat(taskCols.length))+' 70px 90px;padding:7px 10px;border-bottom:1px solid var(--b1);font-size:11px;color:var(--tx);align-items:center">';
       rowsHtml+='<span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(r['NPC Name']||'')+'\nIC: '+esc(r['IC Number']||'')+'\nPhone: '+esc(r['Phone']||'')+'">'+esc(r['NPC Name']||'Anon')+'</span>';
       rowsHtml+='<span style="font-size:10px;color:var(--t2)">'+esc(r['Timestamp']||'')+'</span>';
       // Task columns — show proof link or empty
@@ -537,6 +542,43 @@ document.addEventListener('mouseout',function(e){
   if(link){clearTimeout(_previewTimer);_previewTimer=setTimeout(function(){if(_previewEl){_previewEl.remove();_previewEl=null;}},300);}
 });
 recalc();
+// Load campaign history on startup
+(function(){
+  var scriptUrl=gv('scriptUrl');
+  if(!scriptUrl)return;
+  window._scriptUrl=scriptUrl;
+  fetch(scriptUrl+'?action=listCampaigns')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var camps=d.campaigns||[];
+      if(camps.length===0)return;
+      // Dedupe by title, keep latest
+      var seen={},unique=[];
+      for(var i=camps.length-1;i>=0;i--){if(!seen[camps[i].title]){seen[camps[i].title]=true;unique.unshift(camps[i]);}}
+      var html='<div class="slbl">My Campaigns</div>';
+      unique.forEach(function(c){
+        var npcUrl=location.origin+'/npc.html?s='+encodeURIComponent(scriptUrl)+'&id='+c.id;
+        html+='<div class="pr" style="cursor:pointer" onclick="loadPrevCampaign(\''+esc(c.title)+'\')">'
+          +'<span class="pr-icon">&#128203;</span>'
+          +'<div style="flex:1;min-width:0"><div class="pr-name">'+esc(c.brand)+' — '+esc(c.title)+'</div>'
+          +'<div class="pr-url">'+esc(c.created||'')+'</div></div>'
+          +'</div>';
+      });
+      var el=document.getElementById('campHistory');
+      if(el)el.innerHTML=html;
+    }).catch(function(){});
+})();
+function loadPrevCampaign(title){
+  window._campaign=title;
+  var scriptUrl=gv('scriptUrl');
+  window._scriptUrl=scriptUrl;
+  // Show dashboard for this campaign
+  var dashHtml='<div class="dash"><div class="dash-title">NPC Submissions Dashboard <button class="dash-refresh" onclick="loadDashboard()">&#8635; Refresh</button></div><div class="dash-stats"><div class="dash-stat"><div class="dash-stat-num" id="ds_total">-</div><div class="dash-stat-lbl">Total NPCs</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_done">-</div><div class="dash-stat-lbl">Completed</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_pending">-</div><div class="dash-stat-lbl">Pending</div></div><div class="dash-stat"><div class="dash-stat-num" id="ds_screens">-</div><div class="dash-stat-lbl">Screenshots</div></div></div><div class="dash-table"><div class="dash-table-hdr"><span>NPC Name</span><span>Submitted</span><span>Tasks</span><span>Status</span></div><div id="dashRows"><div class="dash-empty">Loading submissions...</div></div></div></div>';
+  var el=document.getElementById('emptyState');if(el)el.style.display='none';
+  var ch=document.getElementById('campHistory');if(ch)ch.style.display='none';
+  document.getElementById('preview').innerHTML='<div class="result"><div style="margin-bottom:16px"><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">'+esc(title)+'</div></div>'+dashHtml+'</div>';
+  loadDashboard();
+}
 </script>
 </body>
 </html>
