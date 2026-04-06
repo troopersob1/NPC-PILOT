@@ -135,6 +135,14 @@ textarea.npc-input:focus{border:2px solid #1B2654}
 .gen-box-toggle .gen-icon{font-size:16px}
 .gen-box-body{max-height:0;overflow:hidden;transition:max-height .3s ease;padding:0 14px}
 .gen-box-body.open{max-height:2000px;padding:0 14px 14px}
+.btn-generate{width:100%;padding:13px;background:#1B2654;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px;transition:background .15s}
+.btn-generate:hover{background:#2a3a7a}
+.btn-generate:disabled{opacity:.5;cursor:not-allowed}
+.gen-result{background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;font-size:14px;color:#202124;line-height:1.6;white-space:pre-wrap;word-break:break-word;min-height:60px;margin-bottom:4px}
+.btn-copy-use{flex:1;padding:11px;background:#34A853;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-copy-use:hover{background:#2d9248}
+.btn-try-again{padding:11px 16px;background:transparent;color:#1B2654;border:1px solid #c5cae9;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-try-again:hover{background:#f0f4f9}
 </style>
 </head>
 <body>
@@ -154,6 +162,19 @@ var uploadsDone={};
 var uploadFiles={};
 var totalTasks=0;
 var doneTasks=0;
+
+/* ── AI proxy helper ── */
+async function callAI(messages, maxTokens) {
+  var scriptUrl = (C && C.scriptUrl) ? C.scriptUrl : (window._scriptUrl || '');
+  if (!scriptUrl) return null;
+  var body = { model: 'claude-sonnet-4-20250514', max_tokens: maxTokens || 300, messages: messages };
+  try {
+    var res = await fetch(scriptUrl + '?action=anthropicProxy&payload=' + encodeURIComponent(JSON.stringify(body)));
+    var j = await res.json();
+    if (j.error) { console.error('AI error:', j.error); return null; }
+    return (j.content && j.content[0] && j.content[0].text) ? j.content[0].text.trim() : null;
+  } catch(e) { console.error('callAI failed:', e); return null; }
+}
 
 /* ── Toggle collapsible sections ── */
 function toggle(el){
@@ -198,6 +219,32 @@ function clearProfile(){
   document.querySelectorAll('#claimName,#claimIC,#claimPhone,#claimAccount,#claimEmail').forEach(function(el){el.value='';});
   var bank=document.getElementById('claimBank');if(bank)bank.selectedIndex=0;
   var note=document.getElementById('profileNote');if(note)note.style.display='none';
+}
+function lookupProfile(){
+  var phoneEl=document.getElementById('lookupPhone');
+  if(!phoneEl)return;
+  var phone=phoneEl.value.trim().replace(/[-\s]/g,'');
+  if(!phone){alert('Enter your phone number first.');return;}
+  var scriptUrl=C&&C.scriptUrl;
+  if(!scriptUrl)return;
+  var btn=document.getElementById('lookupBtn');
+  if(btn){btn.disabled=true;btn.textContent='Looking up\u2026';}
+  fetch(scriptUrl+'?action=getProfile&phone='+encodeURIComponent(phone))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.profile&&d.profile.ic){
+        var fields={claimName:d.profile.name,claimIC:d.profile.ic,claimPhone:d.profile.phone||phone,claimAccount:d.profile.account,claimEmail:d.profile.email};
+        Object.keys(fields).forEach(function(id){var el=document.getElementById(id);if(el&&fields[id])el.value=fields[id];});
+        var bankEl=document.getElementById('claimBank');
+        if(bankEl&&d.profile.bank){for(var i=0;i<bankEl.options.length;i++){if(bankEl.options[i].text.indexOf(d.profile.bank)>=0){bankEl.selectedIndex=i;break;}}}
+        var note=document.getElementById('profileNote');if(note)note.style.display='block';
+        var sec=document.getElementById('lookupSection');if(sec)sec.style.display='none';
+      } else {
+        if(btn){btn.disabled=false;btn.textContent='Not found \u2014 fill in below';}
+        setTimeout(function(){var sec=document.getElementById('lookupSection');if(sec)sec.style.display='none';},1500);
+      }
+    })
+    .catch(function(){if(btn){btn.disabled=false;btn.textContent='Look up';}});
 }
 
 var PM={tiktok:{cls:'pb-tiktok',label:'TikTok'},instagram:{cls:'pb-instagram',label:'Instagram'},facebook:{cls:'pb-facebook',label:'Facebook'},twitter:{cls:'pb-twitter',label:'X/Twitter'},linkedin:{cls:'pb-linkedin',label:'LinkedIn'},youtube:{cls:'pb-youtube',label:'YouTube'},xiaohongshu:{cls:'pb-xiaohongshu',label:'Xiaohongshu'}};
@@ -287,7 +334,10 @@ function switchLang(idx,type,lang){
   var id=idx+'_'+type;
   document.querySelectorAll('[id^="lb_'+id+'_"]').forEach(function(el){el.classList.remove('active');});
   var el=document.getElementById('lb_'+id+'_'+lang);if(el)el.classList.add('active');
-  updatePromptDisplay(idx,type);
+  var resultEl=document.getElementById('gen_result_'+id);
+  if(resultEl&&resultEl.style.display!=='none'&&resultEl.dataset.current){
+    generateContent(idx,type);
+  }
 }
 
 function updatePromptDisplay(idx,type){
@@ -345,7 +395,16 @@ function build(d){
   html+='<div class="prog-wrap"><div class="prog-label"><span class="prog-title">Task Progress</span><span class="prog-pct" id="prog_pct">0 of '+totalTasks+' done</span></div><div class="prog-bar"><div class="prog-fill" id="prog_fill"></div></div><div class="prog-tasks" id="prog_tasks"></div></div>';
   html+='<div class="card"><div class="section-title">Engage With Our Posts</div><p style="font-size:13px;color:#5f6368;margin-bottom:16px;line-height:1.6">Upload a screenshot for each completed action.</p>'+platBlocks+'</div>';
   html+=followSec;
-  html+='<div class="card"><div class="section-title">Claim Your Reward</div><div id="profileNote" style="display:none;margin-bottom:12px;padding:8px 12px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7;font-size:12px;color:#2e7d32">&#9989; Your details were saved from last time. <a href="#" onclick="clearProfile();return false" style="color:#1B2654;font-weight:600">Not you? Clear</a></div>'+fld('Name as per IC','text','claimName','Full name as shown on your IC',true)+fld('IC Number','text','claimIC','e.g. 900101-14-1234',true)+fld('Phone Number','text','claimPhone','e.g. 012-3456789',true)+bankSel()+fld('Bank Account Number','text','claimAccount','Your bank account number',true)+fld('Email Address','email','claimEmail','For reward confirmation',true)+'</div>';
+  var lookupHtml='';
+  if(d.scriptUrl){
+    lookupHtml='<div id="lookupSection" style="margin-bottom:14px;padding:12px 14px;background:#f0f4f9;border-radius:8px;border:1px solid #e0e0e0">'
+      +'<div style="font-size:13px;font-weight:600;color:#1B2654;margin-bottom:8px">Returning NPC? Pre-fill your details</div>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<input type="text" id="lookupPhone" placeholder="Your phone number" style="flex:1;border:1px solid #c5cae9;border-radius:6px;padding:9px 11px;font-size:14px;font-family:inherit;outline:none;background:#fff" />'
+      +'<button id="lookupBtn" onclick="lookupProfile()" style="padding:9px 14px;background:#1B2654;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Look up</button>'
+      +'</div></div>';
+  }
+  html+='<div class="card"><div class="section-title">Claim Your Reward</div>'+lookupHtml+'<div id="profileNote" style="display:none;margin-bottom:12px;padding:8px 12px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7;font-size:12px;color:#2e7d32">&#9989; Your details loaded. <a href="#" onclick="clearProfile();return false" style="color:#1B2654;font-weight:600">Not you? Clear</a></div>'+fld('Name as per IC','text','claimName','Full name as shown on your IC',true)+fld('IC Number','text','claimIC','e.g. 900101-14-1234',true)+fld('Phone Number','text','claimPhone','e.g. 012-3456789',true)+bankSel()+fld('Bank Account Number','text','claimAccount','Your bank account number',true)+fld('Email Address','email','claimEmail','For reward confirmation',true)+'</div>';
   html+='<div id="submitStatus" class="submit-status"></div>';
   html+='<div class="submit-row"><button class="btn-clear" onclick="doClear()">Clear</button><button class="btn-submit" id="submitBtn" onclick="doSubmit()">Submit &amp; Claim Reward</button></div>';
   document.getElementById('app').innerHTML=html;
@@ -374,26 +433,65 @@ function platBlock(p,i,brand,why,t,r){
 
 function genBox(idx,type,langs,platLabel){
   var id=idx+'_'+type;
-  var title=type==='cap'?'Caption Generator':'Comment Generator';
+  var title=type==='cap'?'Generate Caption':'Generate Comment';
   var curLang=langs[0]||'en';
-
   var lbs=langs.map(function(lk){
     return '<button class="lang-btn'+(lk===curLang?' active':'')+'" id="lb_'+id+'_'+lk+'" data-lang="'+lk+'" onclick="switchLang('+idx+',\''+type+'\',\''+lk+'\')">'+LL[lk]+'</button>';
   }).join('');
-
-  var prompt=buildPrompt(type,curLang,platLabel);
-
-  var genLabel=type==='cap'?'Generate Caption':'Generate Comment';
   var html='<div class="gen-box">';
-  html+='<div class="gen-box-toggle" onclick="toggle(this)"><span class="gen-icon">&#10024;</span><span class="gen-label">'+genLabel+'</span></div>';
+  html+='<div class="gen-box-toggle" onclick="toggle(this)"><span class="gen-icon">&#10024;</span><span class="gen-label">'+title+'</span></div>';
   html+='<div class="gen-box-body">';
   html+='<div class="lang-row">'+lbs+'</div>';
-  html+='<div class="ai-links"><a class="ai-link claude" href="https://claude.ai/new" target="_blank">Claude</a><a class="ai-link chatgpt" href="https://chatgpt.com/" target="_blank">ChatGPT</a><a class="ai-link gemini" href="https://gemini.google.com/" target="_blank">Gemini</a></div>';
-  html+='<div class="prompt-display" id="prompt_'+id+'" style="max-height:80px">'+esc(prompt)+'</div>';
-  html+='<div class="gen-action-row"><button class="btn-copy-prompt" id="cpbtn_'+id+'" onclick="copyPrompt('+idx+',\''+type+'\')">&#128203; Copy Prompt</button></div>';
-  html+='<div class="paste-area"><div class="paste-label">Paste your AI '+(type==='cap'?'caption':'comment')+' here:</div><textarea id="paste_'+id+'" placeholder="Paste here..." oninput="this.className=this.value.trim()?\'has-text\':\'\'"></textarea></div>';
-  html+='</div></div>';
+  html+='<button class="btn-generate" id="gen_btn_'+id+'" onclick="generateContent('+idx+',\''+type+'\')">&#10024; '+title+'</button>';
+  html+='<div class="gen-result" id="gen_result_'+id+'" style="display:none"></div>';
+  html+='<div id="gen_act_'+id+'" style="display:none;gap:8px;margin-top:8px">';
+  html+='<button class="btn-copy-use" id="copy_btn_'+id+'" onclick="copyGenResult('+idx+',\''+type+'\')">&#128203; Copy &amp; Use</button>';
+  html+='<button class="btn-try-again" onclick="generateContent('+idx+',\''+type+'\')">&#8635; Try Another</button>';
+  html+='</div>';
+  html+='<div style="margin-top:10px"><div class="toggle-hdr" onclick="toggle(this)" style="font-size:11px;color:#9aa0a6;padding:6px 0;min-height:36px">or type your own</div>';
+  html+='<div class="collapsible"><div class="paste-area"><div class="paste-label">Type your own '+(type==='cap'?'caption':'comment')+':</div>';
+  html+='<textarea id="paste_'+id+'" placeholder="Type here..." class="npc-input" oninput="this.className=\'npc-input\'+(this.value.trim()?\' has-text\':\'\')"></textarea></div></div>';
+  html+='</div></div></div>';
   return html;
+}
+
+async function generateContent(idx,type){
+  var id=idx+'_'+type;
+  var lang=getActiveGenLang(id);
+  var platLabel=(C.urls&&C.urls[idx])?C.urls[idx].label:'Platform';
+  var prompt=buildPrompt(type,lang,platLabel);
+  var resultEl=document.getElementById('gen_result_'+id);
+  var genBtn=document.getElementById('gen_btn_'+id);
+  var actRow=document.getElementById('gen_act_'+id);
+  if(resultEl){resultEl.textContent='Generating\u2026';resultEl.style.display='block';}
+  if(genBtn){genBtn.disabled=true;genBtn.textContent='Generating\u2026';}
+  if(actRow)actRow.style.display='none';
+  var text=await callAI([{role:'user',content:prompt}],300);
+  if(text){
+    if(resultEl){resultEl.textContent=text;resultEl.dataset.current=text;}
+    if(actRow)actRow.style.display='flex';
+  } else {
+    if(resultEl)resultEl.textContent='Could not generate. Try again or type your own below.';
+  }
+  if(genBtn){genBtn.disabled=false;genBtn.textContent='\u2728 '+(type==='cap'?'Generate Caption':'Generate Comment');}
+}
+
+function copyGenResult(idx,type){
+  var id=idx+'_'+type;
+  var resultEl=document.getElementById('gen_result_'+id);
+  var copyBtn=document.getElementById('copy_btn_'+id);
+  if(!resultEl||!resultEl.dataset.current)return;
+  var text=resultEl.dataset.current;
+  var done=function(){if(copyBtn){copyBtn.textContent='\u2705 Copied!';setTimeout(function(){copyBtn.textContent='\u{1F4CB} Copy & Use';},2500);}};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(function(){
+      var ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0';
+      document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);
+    });
+  } else {
+    var ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);
+  }
 }
 
 function taskUpload(label,reward,type,platIdx){
@@ -629,6 +727,7 @@ function doSubmit(){
     doneTasks:doneTasks,
     totalTasks:totalTasks,
     taskMap:taskMap,
+    saveProfile:true,
     screenshots:screenshots
   };
 

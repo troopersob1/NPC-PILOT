@@ -30,6 +30,11 @@ function doPost(e) {
       return updateSubmissionStatus(data);
     }
 
+    // Route: save NPC profile
+    if (data.saveProfile === true) {
+      upsertNPCProfile(data);
+    }
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // ── Per-campaign sheet with per-task columns ──
@@ -206,6 +211,30 @@ function doGet(e) {
 
     if (action === 'getCampaign') {
       return getCampaign(ss, e.parameter.id || '');
+    }
+
+    // Anthropic API proxy
+    if (action === 'anthropicProxy') {
+      return doAnthropicProxy(e.parameter.payload || '');
+    }
+
+    // NPC profile lookup
+    if (action === 'getProfile') {
+      var phone = e.parameter.phone || '';
+      if (!phone) return jsonOut({ profile: null });
+      var profSheet = ss.getSheetByName('NPC_Profiles');
+      if (!profSheet) return jsonOut({ profile: null });
+      var profData = profSheet.getDataRange().getValues();
+      var profHeaders = profData[0];
+      var phoneCol = profHeaders.indexOf('Phone');
+      for (var pi = 1; pi < profData.length; pi++) {
+        if (String(profData[pi][phoneCol]).replace(/[-\s]/g, '') === phone.replace(/[-\s]/g, '')) {
+          var profile = {};
+          profHeaders.forEach(function(h, j) { profile[h.toLowerCase()] = profData[pi][j]; });
+          return jsonOut({ profile: profile });
+        }
+      }
+      return jsonOut({ profile: null });
     }
 
     if (action === 'summary') {
@@ -532,6 +561,56 @@ function extractBnmCode(bankStr) {
 
 function formatRate(val) {
   return 'RM ' + parseFloat(val || 0).toFixed(2);
+}
+
+function upsertNPCProfile(payload) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('NPC_Profiles');
+  if (!sheet) {
+    sheet = ss.insertSheet('NPC_Profiles');
+    sheet.appendRow(['IC', 'Name', 'Phone', 'Bank', 'Account', 'Email', 'LastSeen', 'CampaignCount']);
+    sheet.getRange(1, 1, 1, 8).setFontWeight('bold').setBackground('#1B2654').setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+  }
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var icCol = headers.indexOf('IC');
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][icCol]) === String(payload.ic)) {
+      sheet.getRange(i + 1, 1, 1, 8).setValues([[
+        payload.ic, payload.name, payload.phone,
+        payload.bank, payload.account, payload.email,
+        new Date(), (data[i][7] || 0) + 1
+      ]]);
+      return;
+    }
+  }
+  sheet.appendRow([payload.ic, payload.name, payload.phone, payload.bank,
+    payload.account, payload.email, new Date(), 1]);
+}
+
+function doAnthropicProxy(payloadStr) {
+  try {
+    var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+    if (!apiKey) return jsonOut({ error: 'API key not configured' });
+
+    var payload = JSON.parse(payloadStr);
+    var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+
+    var body = JSON.parse(res.getContentText());
+    return jsonOut(body);
+  } catch (err) {
+    return jsonOut({ error: err.toString() });
+  }
 }
 
 function jsonOut(obj) {

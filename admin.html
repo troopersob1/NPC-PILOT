@@ -98,6 +98,7 @@ header{padding:0 20px;height:52px;display:flex;align-items:center;justify-conten
 <div class="sec">Submissions — <span id="campLabel">Select a campaign</span></div>
 <div class="act-row">
   <button class="btn btn-primary" onclick="downloadPaymentFile()">Download Payment File (IBG)</button>
+  <button class="btn btn-warn" onclick="runAIVerification()">&#129302; AI Verify Pending</button>
   <button class="btn btn-ghost" onclick="downloadCSV()">Export CSV</button>
   <button class="btn btn-ghost" onclick="refreshData()">Refresh</button>
 </div>
@@ -126,6 +127,18 @@ header{padding:0 20px;height:52px;display:flex;align-items:center;justify-conten
 var _scriptUrl='';
 var _campaigns=[];
 var _activeCampaign='';
+
+// AI proxy helper
+async function callAI(messages, maxTokens) {
+  if (!_scriptUrl) return null;
+  var body = { model: 'claude-sonnet-4-20250514', max_tokens: maxTokens || 300, messages: messages };
+  try {
+    var res = await fetch(_scriptUrl + '?action=anthropicProxy&payload=' + encodeURIComponent(JSON.stringify(body)));
+    var j = await res.json();
+    if (j.error) { console.error('AI proxy error:', j.error); return null; }
+    return (j.content && j.content[0] && j.content[0].text) ? j.content[0].text.trim() : null;
+  } catch(e) { console.error('callAI failed:', e); return null; }
+}
 var _currentData={headers:[],rows:[]};
 
 function connectScript(){
@@ -155,6 +168,7 @@ function loadCampaigns(){
       document.getElementById('st_campaigns').textContent=_campaigns.length;
       renderCampPills();
       loadAllStats();
+      renderAllCampaignsSummary();
     })
     .catch(function(){showToast('Failed to connect. Check your URL.');});
 }
@@ -279,6 +293,108 @@ function loadAllStats(){
       document.getElementById('st_npcs').textContent=rows.length;
       document.getElementById('st_payout').textContent='RM '+totalPay.toFixed(0);
     }).catch(function(){});
+}
+
+// ── AI Screenshot Verification ──
+async function runAIVerification(){
+  if(!_activeCampaign){showToast('Select a campaign first');return;}
+  var rows=_currentData.rows||[];
+  var headers=_currentData.headers||[];
+  var pending=rows.filter(function(r){return(r['Status']||'Pending Review')==='Pending Review';});
+  if(pending.length===0){showToast('No pending submissions to verify');return;}
+  showToast('Verifying '+pending.length+' submissions\u2026');
+  var taskCols=headers.filter(function(h){return String(h).indexOf('[RM')===0;});
+  for(var i=0;i<pending.length;i++){
+    var row=pending[i];
+    var verdicts=[];
+    for(var t=0;t<taskCols.length;t++){
+      var col=taskCols[t];
+      var url=row[col]||'';
+      if(!url||url.indexOf('http')!==0)continue;
+      var taskMatch=String(col).match(/\]\s*(.+?)\s*-\s*(.+)$/);
+      var platform=taskMatch?taskMatch[1].trim():'Social Media';
+      var taskType=taskMatch?taskMatch[2].trim():'engagement';
+      var verdict=await verifyScreenshot(url,taskType,platform);
+      verdicts.push(verdict);
+    }
+    if(verdicts.length>0){
+      var allPass=verdicts.every(function(v){return v.pass&&v.confidence>=85;});
+      var anyFailHighConf=verdicts.some(function(v){return!v.pass&&v.confidence>=85;});
+      if(allPass){doAction(row['NPC Name']||'',row['IC Number']||'','Approved');}
+      else if(anyFailHighConf){doAction(row['NPC Name']||'',row['IC Number']||'','Rejected');}
+    }
+  }
+  showToast('AI verification complete');
+  setTimeout(function(){loadCampaignData(_activeCampaign);},2500);
+}
+async function verifyScreenshot(driveUrl,taskType,platform){
+  var fileId='';
+  var idMatch=driveUrl.match(/[?&]id=([^&]+)/)||driveUrl.match(/\/d\/([^\/]+)/);
+  if(idMatch)fileId=idMatch[1];
+  var imageUrl=fileId?'https://drive.google.com/thumbnail?id='+fileId+'&sz=w800':driveUrl;
+  var prompt='Verify this social media screenshot.\n'
+    +'Required task: '+taskType+' on '+platform+'\n'
+    +'Check: (1) real social media screenshot, (2) correct platform, (3) task completed.\n'
+    +'For LIKE: like button active/filled. For SHARE: share confirmation visible. '
+    +'For COMMENT: comment visible in thread. For FOLLOW: button shows Following.\n'
+    +'Reply ONLY with JSON: {"pass":true/false,"confidence":0-100,"reason":"one sentence"}';
+  var text=await callAI([{role:'user',content:[
+    {type:'image',source:{type:'url',url:imageUrl}},
+    {type:'text',text:prompt}
+  ]}],100);
+  if(!text)return{pass:false,confidence:0,reason:'Verification unavailable'};
+  try{return JSON.parse(text);}catch(e){return{pass:false,confidence:0,reason:'Could not parse response'};}
+}
+
+// ── All Campaigns Summary (Change 4) ──
+function renderAllCampaignsSummary(){
+  if(!_campaigns||_campaigns.length===0)return;
+  document.getElementById('campLabel').textContent='All Campaigns \u2014 Overview';
+  document.getElementById('ledgerLabel').textContent='All Campaigns';
+  var tblWrap=document.querySelector('.tbl-wrap');
+  if(tblWrap)tblWrap.innerHTML='<div style="padding:20px;color:var(--t2);font-size:13px">Loading campaign data\u2026</div>';
+  var results={};var loaded=0;
+  _campaigns.forEach(function(c){
+    fetch(_scriptUrl+'?action=campaignSubmissions&campaign='+encodeURIComponent(c.title))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var rows=d.rows||[];var approved=0,pending=0,rejected=0,payout=0;
+        rows.forEach(function(r){
+          var s=r['Status']||'Pending Review';
+          if(s==='Approved'){approved++;payout+=parseFloat(r['Pay Amount']||0);}
+          else if(s==='Rejected')rejected++;
+          else pending++;
+        });
+        results[c.title]={c:c,total:rows.length,approved:approved,pending:pending,rejected:rejected,payout:payout};
+      })
+      .catch(function(){results[c.title]={c:c,total:0,approved:0,pending:0,rejected:0,payout:0};})
+      .finally(function(){loaded++;if(loaded===_campaigns.length)buildSummaryTable(results);});
+  });
+}
+function buildSummaryTable(results){
+  var grandPayout=0,grandApproved=0,grandPending=0,grandTotal=0;
+  var html='<table class="tbl"><thead><tr><th>Campaign</th><th>Brand</th><th>Total</th><th>Approved</th><th>Pending</th><th>Payout</th><th></th></tr></thead><tbody>';
+  Object.values(results).forEach(function(s){
+    grandTotal+=s.total;grandApproved+=s.approved;grandPending+=s.pending;grandPayout+=s.payout;
+    html+='<tr><td style="font-weight:600;color:var(--tx)">'+esc(s.c.title||'')+'</td>'
+      +'<td style="color:var(--t2)">'+esc(s.c.brand||'')+'</td><td>'+s.total+'</td>'
+      +'<td><span class="status-badge approved">'+s.approved+'</span></td>'
+      +'<td><span class="status-badge pending">'+s.pending+'</span></td>'
+      +'<td style="font-family:\'DM Mono\',monospace;color:var(--acc)">RM '+s.payout.toFixed(2)+'</td>'
+      +'<td><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="selectCampaign(\''+esc(s.c.title)+'\')">View \u2192</button></td></tr>';
+  });
+  html+='</tbody></table>';
+  var tblWrap=document.querySelector('.tbl-wrap');if(tblWrap)tblWrap.innerHTML=html;
+  document.getElementById('st_npcs').textContent=grandTotal;
+  document.getElementById('st_approved').textContent=grandApproved;
+  document.getElementById('st_pending').textContent=grandPending;
+  document.getElementById('st_payout').textContent='RM '+grandPayout.toFixed(0);
+  document.getElementById('st_campaigns').textContent=_campaigns.length;
+  var fee=grandPayout*0.25,sst=fee*0.08;
+  document.getElementById('lg_payout').textContent='RM '+grandPayout.toFixed(2);
+  document.getElementById('lg_fee').textContent='RM '+fee.toFixed(2);
+  document.getElementById('lg_sst').textContent='RM '+sst.toFixed(2);
+  document.getElementById('lg_net').textContent='RM '+(fee+sst).toFixed(2);
 }
 
 // ── Download IBG Payment File ──
