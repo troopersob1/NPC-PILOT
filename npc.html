@@ -351,6 +351,7 @@ function build(d){
   document.getElementById('app').innerHTML=html;
   updateProgress();
   loadProfile();
+  showCameraButtons();
 }
 
 function platBlock(p,i,brand,why,t,r){
@@ -403,6 +404,8 @@ function taskUpload(label,reward,type,platIdx){
     +'<div class="upload-area-text">Drag &amp; drop screenshot here</div>'
     +'<div class="upload-area-sub">or paste from clipboard (Cmd+V)</div>'
     +'<div class="upload-methods">'
+    +'<button class="upload-btn" onclick="cameraCapture(\''+uid+'\',\''+type+'\')" id="cam_'+uid+'" style="display:none">Take Photo</button>'
+    +'<input type="file" accept="image/*" capture="environment" id="camInput_'+uid+'" style="display:none" onchange="handleCamCapture(this,\''+uid+'\',\''+type+'\')">'
     +'<button class="upload-btn" onclick="browseFile(\''+uid+'\',\''+type+'\')">Browse files</button>'
     +'<button class="upload-btn" onclick="pasteFile(\''+uid+'\',\''+type+'\')">Paste clipboard</button>'
     +'</div></div>'
@@ -444,6 +447,15 @@ function pasteFile(uid,type){
   }).catch(function(){
     alert('Could not access clipboard. Take a screenshot (Cmd+Shift+4), then use drag & drop instead.');
   });
+}
+
+// Camera capture (mobile)
+function cameraCapture(uid,type){document.getElementById('camInput_'+uid).click();}
+function handleCamCapture(input,uid,type){if(input.files&&input.files[0])processFile(input.files[0],uid,type);}
+function showCameraButtons(){
+  if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)){
+    document.querySelectorAll('[id^="cam_u_"]').forEach(function(el){el.style.display='';});
+  }
 }
 
 // Global paste listener — paste screenshot anywhere on the page
